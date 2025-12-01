@@ -2,15 +2,17 @@ import gradio as gr
 import json
 from datetime import datetime, timedelta
 import os
+import hashlib
 
 # 資料檔案路徑
-DATA_FILE = 'deposits.json'
+USERS_FILE = 'users.json'
+DATA_DIR = 'user_data'
 
 # 商店和兌換途徑選項
 STORE_OPTIONS = ['7-11', '全家', '星巴克']
 REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
 
-# 兌換連結對應 (使用 URL Scheme)
+# 兌換連結對應
 REDEEM_LINKS = {
     '遠傳': {
         'app': 'fetnet://',
@@ -18,7 +20,7 @@ REDEEM_LINKS = {
         'name': '遠傳心生活'
     },
     'Line禮物': {
-        'app': 'https://line.me/R/shop/gift/category/coffee',  # Line 使用 Universal Link
+        'app': 'https://line.me/R/shop/gift/category/coffee',
         'web': 'https://gift.line.me/category/coffee',
         'name': 'Line 禮物'
     },
@@ -39,21 +41,110 @@ REDEEM_LINKS = {
     }
 }
 
-def load_deposits():
+# 確保資料目錄存在
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+def hash_password(password):
+    """密碼加密"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def load_users():
+    """載入使用者資料"""
+    if not os.path.exists(USERS_FILE):
+        return {}
+    try:
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_users(users):
+    """儲存使用者資料"""
+    try:
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+        return True
+    except:
+        return False
+
+def register_user(username, password, confirm_password):
+    """註冊新使用者"""
+    if not username or not password:
+        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False)
+    
+    if len(username) < 3:
+        return "❌ 使用者名稱至少需要 3 個字元", gr.update(visible=True), gr.update(visible=False)
+    
+    if len(password) < 6:
+        return "❌ 密碼至少需要 6 個字元", gr.update(visible=True), gr.update(visible=False)
+    
+    if password != confirm_password:
+        return "❌ 兩次密碼輸入不一致", gr.update(visible=True), gr.update(visible=False)
+    
+    users = load_users()
+    
+    if username in users:
+        return "❌ 使用者名稱已存在", gr.update(visible=True), gr.update(visible=False)
+    
+    users[username] = {
+        'password': hash_password(password),
+        'created_at': datetime.now().isoformat()
+    }
+    
+    if save_users(users):
+        # 建立使用者資料檔案
+        user_file = os.path.join(DATA_DIR, f'{username}.json')
+        with open(user_file, 'w', encoding='utf-8') as f:
+            json.dump([], f)
+        return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
+    else:
+        return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False)
+
+def login_user(username, password):
+    """使用者登入"""
+    if not username or not password:
+        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False), None
+    
+    users = load_users()
+    
+    if username not in users:
+        return "❌ 使用者不存在", gr.update(visible=True), gr.update(visible=False), None
+    
+    if users[username]['password'] != hash_password(password):
+        return "❌ 密碼錯誤", gr.update(visible=True), gr.update(visible=False), None
+    
+    return f"✅ 歡迎回來，{username}！", gr.update(visible=False), gr.update(visible=True), username
+
+def logout_user():
+    """使用者登出"""
+    return gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
+
+def get_user_data_file(username):
+    """取得使用者資料檔案路徑"""
+    if not username:
+        return None
+    return os.path.join(DATA_DIR, f'{username}.json')
+
+def load_deposits(username):
     """載入寄杯資料"""
-    if not os.path.exists(DATA_FILE):
+    data_file = get_user_data_file(username)
+    if not data_file or not os.path.exists(data_file):
         return []
     try:
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+        with open(data_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         print(f"載入資料錯誤: {e}")
         return []
 
-def save_deposits(deposits):
+def save_deposits(username, deposits):
     """儲存寄杯資料"""
+    data_file = get_user_data_file(username)
+    if not data_file:
+        return False
     try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        with open(data_file, 'w', encoding='utf-8') as f:
             json.dump(deposits, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
@@ -90,11 +181,10 @@ def get_date_options():
     """生成未來90天的日期選項"""
     options = []
     today = datetime.now()
-    for i in range(91):  # 今天 + 未來90天
+    for i in range(91):
         date = today + timedelta(days=i)
         date_str = date.strftime('%Y-%m-%d')
         display_str = date.strftime('%Y年%m月%d日 (%a)')
-        # 翻譯星期
         weekday_map = {
             'Mon': '週一', 'Tue': '週二', 'Wed': '週三', 
             'Thu': '週四', 'Fri': '週五', 'Sat': '週六', 'Sun': '週日'
@@ -104,19 +194,22 @@ def get_date_options():
         options.append((display_str, date_str))
     return options
 
-def add_deposit(item, quantity, store, redeem_method, expiry_date):
+def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
+    if not username:
+        return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
     if not all([item, store, redeem_method, expiry_date]):
-        return "❌ 請填寫所有欄位", get_deposits_display(), get_statistics(), get_deposit_choices()
+        return "❌ 請填寫所有欄位", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     try:
         quantity = int(quantity)
         if quantity < 1:
-            return "❌ 數量必須大於 0", get_deposits_display(), get_statistics(), get_deposit_choices()
+            return "❌ 數量必須大於 0", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except:
-        return "❌ 數量格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
+        return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = load_deposits()
+    deposits = load_deposits(username)
     new_deposit = {
         'id': str(int(datetime.now().timestamp() * 1000)),
         'item': item.strip(),
@@ -128,14 +221,17 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
     }
     deposits.append(new_deposit)
     
-    if save_deposits(deposits):
-        return "✅ 新增成功！", get_deposits_display(), get_statistics(), get_deposit_choices()
+    if save_deposits(username, deposits):
+        return "✅ 新增成功！", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     else:
-        return "❌ 儲存失敗", get_deposits_display(), get_statistics(), get_deposit_choices()
+        return "❌ 儲存失敗", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
-def get_deposit_choices():
-    """取得寄杯記錄選項（用於下拉選單）"""
-    deposits = load_deposits()
+def get_deposit_choices(username):
+    """取得寄杯記錄選項"""
+    if not username:
+        return gr.update(choices=[], value=None)
+    
+    deposits = load_deposits(username)
     if not deposits:
         return gr.update(choices=[], value=None)
     
@@ -148,12 +244,15 @@ def get_deposit_choices():
     
     return gr.update(choices=choices, value=None)
 
-def redeem_one(deposit_id):
+def redeem_one(username, deposit_id):
     """兌換一杯"""
-    if not deposit_id:
-        return "❌ 請選擇要兌換的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    if not username:
+        return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = load_deposits()
+    if not deposit_id:
+        return "❌ 請選擇要兌換的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    deposits = load_deposits(username)
     updated = False
     deposit_name = ""
     
@@ -170,17 +269,20 @@ def redeem_one(deposit_id):
             break
     
     if updated:
-        save_deposits(deposits)
-        return message, get_deposits_display(), get_statistics(), get_deposit_choices()
+        save_deposits(username, deposits)
+        return message, get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     else:
-        return "❌ 找不到該記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+        return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
-def delete_deposit(deposit_id):
+def delete_deposit(username, deposit_id):
     """刪除寄杯記錄"""
-    if not deposit_id:
-        return "❌ 請選擇要刪除的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    if not username:
+        return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = load_deposits()
+    if not deposit_id:
+        return "❌ 請選擇要刪除的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    deposits = load_deposits(username)
     deposit_name = ""
     
     for d in deposits:
@@ -189,13 +291,22 @@ def delete_deposit(deposit_id):
             break
     
     deposits = [d for d in deposits if d['id'] != deposit_id]
-    save_deposits(deposits)
+    save_deposits(username, deposits)
     
-    return f"✅ 已刪除 {deposit_name} 的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    return f"✅ 已刪除 {deposit_name} 的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
-def get_deposits_display():
+def get_deposits_display(username):
     """取得寄杯記錄顯示"""
-    deposits = load_deposits()
+    if not username:
+        return """
+        <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="font-size: 64px; margin-bottom: 20px;">🔒</div>
+            <p style="font-size: 20px; color: #6b7280; margin-bottom: 10px;">請先登入</p>
+            <p style="font-size: 16px; color: #9ca3af;">登入後即可查看您的寄杯記錄</p>
+        </div>
+        """
+    
+    deposits = load_deposits(username)
     
     if not deposits:
         return """
@@ -206,7 +317,6 @@ def get_deposits_display():
         </div>
         """
     
-    # 按到期日排序
     deposits.sort(key=lambda x: x.get('expiryDate', '9999-12-31'))
     
     html = '<div style="display: flex; flex-direction: column; gap: 20px;">'
@@ -215,7 +325,6 @@ def get_deposits_display():
         expired = is_expired(deposit['expiryDate'])
         expiring = is_expiring_soon(deposit['expiryDate']) and not expired
         
-        # 決定卡片樣式
         if expired:
             card_style = "background: #fef2f2; border: 2px solid #fca5a5;"
             status_text = "（已過期）"
@@ -229,7 +338,6 @@ def get_deposits_display():
             status_text = ""
             status_color = "#6b7280"
         
-        # 取得連結資訊
         redeem_info = REDEEM_LINKS.get(deposit['redeemMethod'], {
             'app': '#',
             'web': '#',
@@ -283,9 +391,12 @@ def get_deposits_display():
     html += '</div>'
     return html
 
-def get_statistics():
+def get_statistics(username):
     """取得統計資訊"""
-    deposits = load_deposits()
+    if not username:
+        return ""
+    
+    deposits = load_deposits(username)
     
     if not deposits:
         return ""
@@ -320,15 +431,18 @@ def get_statistics():
     """
     return html
 
-def refresh_display():
+def refresh_display(username):
     """重新整理顯示"""
-    return get_deposits_display(), get_statistics(), get_deposit_choices()
+    return get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
 # 建立 Gradio 介面
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
 ) as app:
+    
+    # 儲存當前使用者
+    current_user = gr.State(None)
     
     gr.HTML("""
         <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
@@ -346,92 +460,138 @@ with gr.Blocks(
         </div>
     """)
     
-    with gr.Accordion("➕ 新增寄杯記錄", open=True):
+    # 登入/註冊區域
+    with gr.Column(visible=True) as login_area:
+        with gr.Tabs():
+            with gr.Tab("🔐 登入"):
+                login_status = gr.Markdown()
+                login_username = gr.Textbox(label="使用者名稱", placeholder="請輸入使用者名稱")
+                login_password = gr.Textbox(label="密碼", type="password", placeholder="請輸入密碼")
+                login_btn = gr.Button("登入", variant="primary", size="lg")
+            
+            with gr.Tab("📝 註冊"):
+                register_status = gr.Markdown()
+                register_username = gr.Textbox(label="使用者名稱", placeholder="至少 3 個字元")
+                register_password = gr.Textbox(label="密碼", type="password", placeholder="至少 6 個字元")
+                register_confirm = gr.Textbox(label="確認密碼", type="password", placeholder="再次輸入密碼")
+                register_btn = gr.Button("註冊", variant="primary", size="lg")
+    
+    # 主要功能區域（登入後顯示）
+    with gr.Column(visible=False) as main_area:
         with gr.Row():
-            item_input = gr.Textbox(
-                label="☕ 咖啡品項", 
-                placeholder="例如：美式咖啡、拿鐵",
-                scale=2
-            )
-            quantity_input = gr.Number(
-                label="🔢 數量（杯）", 
-                value=1, 
-                minimum=1, 
-                precision=0,
-                scale=1
-            )
+            user_info = gr.Markdown()
+            logout_btn = gr.Button("🚪 登出", size="sm")
         
-        with gr.Row():
-            store_input = gr.Dropdown(
-                label="🏪 商店名稱", 
-                choices=STORE_OPTIONS,
-                scale=1
+        gr.Markdown("---")
+        
+        with gr.Accordion("➕ 新增寄杯記錄", open=True):
+            with gr.Row():
+                item_input = gr.Textbox(
+                    label="☕ 咖啡品項", 
+                    placeholder="例如：美式咖啡、拿鐵",
+                    scale=2
+                )
+                quantity_input = gr.Number(
+                    label="🔢 數量（杯）", 
+                    value=1, 
+                    minimum=1, 
+                    precision=0,
+                    scale=1
+                )
+            
+            with gr.Row():
+                store_input = gr.Dropdown(
+                    label="🏪 商店名稱", 
+                    choices=STORE_OPTIONS,
+                    scale=1
+                )
+                redeem_method_input = gr.Dropdown(
+                    label="📦 兌換途徑", 
+                    choices=REDEEM_METHODS,
+                    scale=1
+                )
+            
+            expiry_date_input = gr.Dropdown(
+                label="📅 到期日",
+                choices=get_date_options(),
+                value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+                interactive=True
             )
-            redeem_method_input = gr.Dropdown(
-                label="📦 兌換途徑", 
-                choices=REDEEM_METHODS,
-                scale=1
+            
+            add_status = gr.Markdown()
+            add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+        
+        gr.Markdown("---")
+        
+        with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
+            gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
+            action_status = gr.Markdown()
+            deposit_selector = gr.Dropdown(
+                label="📋 選擇寄杯記錄",
+                choices=[],
+                interactive=True
             )
+            
+            with gr.Row():
+                redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="lg", scale=2)
+                delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="lg", scale=1)
+                refresh_btn = gr.Button("🔄 重新整理", size="lg", scale=1)
         
-        expiry_date_input = gr.Dropdown(
-            label="📅 到期日",
-            choices=get_date_options(),
-            value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
-            interactive=True
-        )
+        gr.Markdown("---")
+        gr.Markdown("### 📋 所有寄杯記錄")
         
-        add_status = gr.Markdown()
-        add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+        deposits_display = gr.HTML(value=get_deposits_display(None))
+        statistics_display = gr.HTML(value=get_statistics(None))
     
-    gr.Markdown("---")
+    # 事件處理 - 註冊
+    register_btn.click(
+        fn=register_user,
+        inputs=[register_username, register_password, register_confirm],
+        outputs=[register_status, login_area, main_area]
+    )
     
-    with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
-        gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
-        action_status = gr.Markdown()
-        deposit_selector = gr.Dropdown(
-            label="📋 選擇寄杯記錄",
-            choices=[],
-            interactive=True
-        )
-        
-        with gr.Row():
-            redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="lg", scale=2)
-            delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="lg", scale=1)
-            refresh_btn = gr.Button("🔄 重新整理", size="lg", scale=1)
+    # 事件處理 - 登入
+    login_btn.click(
+        fn=login_user,
+        inputs=[login_username, login_password],
+        outputs=[login_status, login_area, main_area, current_user]
+    ).then(
+        fn=lambda u: (f"👤 使用者：**{u}**" if u else "", get_deposits_display(u), get_statistics(u), get_deposit_choices(u)),
+        inputs=[current_user],
+        outputs=[user_info, deposits_display, statistics_display, deposit_selector]
+    )
     
-    gr.Markdown("---")
-    gr.Markdown("### 📋 所有寄杯記錄")
+    # 事件處理 - 登出
+    logout_btn.click(
+        fn=logout_user,
+        outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
+    )
     
-    deposits_display = gr.HTML(value=get_deposits_display())
-    statistics_display = gr.HTML(value=get_statistics())
-    
-    # 事件處理
+    # 事件處理 - 新增記錄
     add_btn.click(
         fn=add_deposit,
-        inputs=[item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
+    # 事件處理 - 兌換
     redeem_btn.click(
         fn=redeem_one,
-        inputs=[deposit_selector],
+        inputs=[current_user, deposit_selector],
         outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
+    # 事件處理 - 刪除
     delete_btn.click(
         fn=delete_deposit,
-        inputs=[deposit_selector],
+        inputs=[current_user, deposit_selector],
         outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
+    # 事件處理 - 重新整理
     refresh_btn.click(
         fn=refresh_display,
-        outputs=[deposits_display, statistics_display, deposit_selector]
-    )
-    
-    # 初始載入
-    app.load(
-        fn=refresh_display,
+        inputs=[current_user],
         outputs=[deposits_display, statistics_display, deposit_selector]
     )
 
