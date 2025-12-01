@@ -1,6 +1,6 @@
 import gradio as gr
 import json
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 import os
 import hashlib
 
@@ -177,6 +177,19 @@ def format_date(date_str):
     except:
         return date_str
 
+def generate_date_options():
+    """生成日期選項（未來90天）"""
+    options = []
+    today = datetime.now()
+    for i in range(91):
+        date = today + timedelta(days=i)
+        date_str = date.strftime('%Y-%m-%d')
+        # 格式化顯示：2025-12-01 (週一)
+        weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
+        display = f"{date.strftime('%Y-%m-%d')} ({weekday})"
+        options.append((display, date_str))
+    return options
+
 def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not username:
@@ -191,21 +204,6 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
             return "❌ 數量必須大於 0", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
-    
-    # 處理日期格式 - 支援多種格式
-    try:
-        if isinstance(expiry_date, str):
-            # 移除時間部分
-            if 'T' in expiry_date:
-                expiry_date = expiry_date.split('T')[0]
-            # 驗證日期格式
-            datetime.strptime(expiry_date, '%Y-%m-%d')
-        elif isinstance(expiry_date, date):
-            expiry_date = expiry_date.strftime('%Y-%m-%d')
-        else:
-            return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
-    except:
-        return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -506,32 +504,14 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用 HTML5 原生日期選擇器
-            expiry_date_input = gr.Textbox(
+            # 使用下拉選單作為日期選擇器
+            expiry_date_input = gr.Dropdown(
                 label="📅 到期日",
-                placeholder="請點擊選擇日期",
-                elem_id="date-picker",
-                interactive=True
+                choices=generate_date_options(),
+                value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+                interactive=True,
+                allow_custom_value=False
             )
-            
-            gr.HTML("""
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // 找到日期輸入框
-                const dateInput = document.querySelector('#date-picker input');
-                if (dateInput) {
-                    // 設定為 date 類型
-                    dateInput.type = 'date';
-                    // 設定最小日期為今天
-                    dateInput.min = new Date().toISOString().split('T')[0];
-                    // 設定預設值為 30 天後
-                    const defaultDate = new Date();
-                    defaultDate.setDate(defaultDate.getDate() + 30);
-                    dateInput.value = defaultDate.toISOString().split('T')[0];
-                }
-            });
-            </script>
-            """)
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
