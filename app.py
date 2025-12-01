@@ -69,20 +69,20 @@ def format_date(date_str):
 def add_deposit(item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not all([item, store, redeem_method, expiry_date]):
-        return "❌ 請填寫所有欄位", get_deposits_display(), get_statistics()
+        return "❌ 請填寫所有欄位", get_deposits_display(), get_statistics(), gr.update(choices=[])
     
     try:
         quantity = int(quantity)
         if quantity < 1:
-            return "❌ 數量必須大於 0", get_deposits_display(), get_statistics()
+            return "❌ 數量必須大於 0", get_deposits_display(), get_statistics(), gr.update(choices=[])
     except:
-        return "❌ 數量格式錯誤", get_deposits_display(), get_statistics()
+        return "❌ 數量格式錯誤", get_deposits_display(), get_statistics(), gr.update(choices=[])
     
     # 驗證日期格式
     try:
         datetime.strptime(expiry_date, '%Y-%m-%d')
     except:
-        return "❌ 日期格式錯誤，請使用 YYYY-MM-DD", get_deposits_display(), get_statistics()
+        return "❌ 日期格式錯誤，請使用 YYYY-MM-DD", get_deposits_display(), get_statistics(), gr.update(choices=[])
     
     deposits = load_deposits()
     new_deposit = {
@@ -97,34 +97,69 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
     deposits.append(new_deposit)
     
     if save_deposits(deposits):
-        return "✅ 新增成功！", get_deposits_display(), get_statistics()
+        return "✅ 新增成功！", get_deposits_display(), get_statistics(), get_deposit_choices()
     else:
-        return "❌ 儲存失敗", get_deposits_display(), get_statistics()
+        return "❌ 儲存失敗", get_deposits_display(), get_statistics(), gr.update(choices=[])
 
-def delete_deposit(deposit_id):
-    """刪除寄杯記錄"""
+def get_deposit_choices():
+    """取得寄杯記錄選項（用於下拉選單）"""
     deposits = load_deposits()
-    deposits = [d for d in deposits if d['id'] != deposit_id]
-    save_deposits(deposits)
-    return get_deposits_display(), get_statistics()
+    if not deposits:
+        return gr.update(choices=[], value=None)
+    
+    choices = []
+    for d in deposits:
+        expired_tag = " [已過期]" if is_expired(d['expiryDate']) else ""
+        expiring_tag = " [即將到期]" if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate']) else ""
+        label = f"{d['item']} - {d['store']} ({d['quantity']}杯) - 到期:{format_date(d['expiryDate'])}{expired_tag}{expiring_tag}"
+        choices.append((label, d['id']))
+    
+    return gr.update(choices=choices, value=None)
 
 def redeem_one(deposit_id):
     """兌換一杯"""
+    if not deposit_id:
+        return "❌ 請選擇要兌換的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    
     deposits = load_deposits()
     updated = False
+    deposit_name = ""
+    
     for i, deposit in enumerate(deposits):
         if deposit['id'] == deposit_id:
+            deposit_name = deposit['item']
             if deposit['quantity'] > 1:
                 deposits[i]['quantity'] -= 1
+                message = f"✅ 已兌換一杯 {deposit_name}，剩餘 {deposits[i]['quantity']} 杯"
             else:
                 deposits = [d for d in deposits if d['id'] != deposit_id]
+                message = f"✅ 已兌換最後一杯 {deposit_name}，記錄已刪除"
             updated = True
             break
     
     if updated:
         save_deposits(deposits)
+        return message, get_deposits_display(), get_statistics(), get_deposit_choices()
+    else:
+        return "❌ 找不到該記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+
+def delete_deposit(deposit_id):
+    """刪除寄杯記錄"""
+    if not deposit_id:
+        return "❌ 請選擇要刪除的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
     
-    return get_deposits_display(), get_statistics()
+    deposits = load_deposits()
+    deposit_name = ""
+    
+    for d in deposits:
+        if d['id'] == deposit_id:
+            deposit_name = d['item']
+            break
+    
+    deposits = [d for d in deposits if d['id'] != deposit_id]
+    save_deposits(deposits)
+    
+    return f"✅ 已刪除 {deposit_name} 的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
 
 def get_deposits_display():
     """取得寄杯記錄顯示"""
@@ -193,7 +228,7 @@ def get_deposits_display():
                 </a>
             </div>
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
-                記錄 ID: {deposit['id']} | 建立時間: {deposit.get('createdAt', 'N/A')[:10]}
+                記錄 ID: {deposit['id'][:8]}... | 建立時間: {deposit.get('createdAt', 'N/A')[:10]}
             </div>
         </div>
         """
@@ -240,7 +275,7 @@ def get_statistics():
 
 def refresh_display():
     """重新整理顯示"""
-    return get_deposits_display(), get_statistics()
+    return get_deposits_display(), get_statistics(), get_deposit_choices()
 
 # 建立 Gradio 介面
 with gr.Blocks(
@@ -297,30 +332,56 @@ with gr.Blocks(
         )
         
         add_status = gr.Markdown()
+        add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+    
+    gr.Markdown("---")
+    
+    with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
+        action_status = gr.Markdown()
+        deposit_selector = gr.Dropdown(
+            label="📋 選擇寄杯記錄",
+            choices=[],
+            interactive=True
+        )
         
         with gr.Row():
-            add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg", scale=2)
+            redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="lg", scale=2)
+            delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="lg", scale=1)
             refresh_btn = gr.Button("🔄 重新整理", size="lg", scale=1)
     
-    deposits_display = gr.HTML(value=get_deposits_display(), label="📋 寄杯記錄")
+    gr.Markdown("---")
+    
+    deposits_display = gr.HTML(value=get_deposits_display(), label="📋 所有寄杯記錄")
     statistics_display = gr.HTML(value=get_statistics())
     
     # 事件處理
     add_btn.click(
         fn=add_deposit,
         inputs=[item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
-        outputs=[add_status, deposits_display, statistics_display]
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    redeem_btn.click(
+        fn=redeem_one,
+        inputs=[deposit_selector],
+        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    delete_btn.click(
+        fn=delete_deposit,
+        inputs=[deposit_selector],
+        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
     refresh_btn.click(
         fn=refresh_display,
-        outputs=[deposits_display, statistics_display]
+        outputs=[deposits_display, statistics_display, deposit_selector]
     )
     
     # 初始載入
     app.load(
         fn=refresh_display,
-        outputs=[deposits_display, statistics_display]
+        outputs=[deposits_display, statistics_display, deposit_selector]
     )
 
 if __name__ == "__main__":
