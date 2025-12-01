@@ -41,7 +41,7 @@ REDEEM_LINKS = {
     }
 }
 
-# 確保資料目錄存在
+# 確保資料目錄存在（不會刪除現有資料）
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
@@ -50,7 +50,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_users():
-    """載入使用者資料"""
+    """載入使用者資料（保留現有資料）"""
     if not os.path.exists(USERS_FILE):
         return {}
     try:
@@ -93,10 +93,11 @@ def register_user(username, password, confirm_password):
     }
     
     if save_users(users):
-        # 建立使用者資料檔案
+        # 建立使用者資料檔案（如果不存在）
         user_file = os.path.join(DATA_DIR, f'{username}.json')
-        with open(user_file, 'w', encoding='utf-8') as f:
-            json.dump([], f)
+        if not os.path.exists(user_file):
+            with open(user_file, 'w', encoding='utf-8') as f:
+                json.dump([], f)
         return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
     else:
         return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False)
@@ -127,7 +128,7 @@ def get_user_data_file(username):
     return os.path.join(DATA_DIR, f'{username}.json')
 
 def load_deposits(username):
-    """載入寄杯資料"""
+    """載入寄杯資料（保留現有資料）"""
     data_file = get_user_data_file(username)
     if not data_file or not os.path.exists(data_file):
         return []
