@@ -10,13 +10,28 @@ DATA_FILE = 'deposits.json'
 STORE_OPTIONS = ['7-11', '全家', '星巴克']
 REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
 
-# 兌換連結對應
+# 兌換連結對應 (使用 URL Scheme 優先，網頁版作為備用)
 REDEEM_LINKS = {
-    '遠傳': 'https://www.fetnet.net/content/cbu/tw/index.html',
-    'Line禮物': 'https://gift.line.me/category/coffee',
-    '7-11': 'https://www.7-11.com.tw/',
-    '全家': 'https://www.family.com.tw/',
-    '星巴克': 'https://www.starbucks.com.tw/'
+    '遠傳': {
+        'app': 'fetnet://',  # 遠傳心生活 App
+        'web': 'https://www.fetnet.net/content/cbu/tw/index.html'
+    },
+    'Line禮物': {
+        'app': 'line://gift/category/coffee',  # Line App 禮物頁面
+        'web': 'https://gift.line.me/category/coffee'
+    },
+    '7-11': {
+        'app': 'openpoint://',  # OPENPOINT App
+        'web': 'https://www.7-11.com.tw/'
+    },
+    '全家': {
+        'app': 'fami://',  # 全家 App
+        'web': 'https://www.family.com.tw/'
+    },
+    '星巴克': {
+        'app': 'starbucks://',  # 星巴克 App
+        'web': 'https://www.starbucks.com.tw/'
+    }
 }
 
 def load_deposits():
@@ -209,10 +224,35 @@ def get_deposits_display():
             status_text = ""
             status_color = "#6b7280"
         
-        redeem_link = REDEEM_LINKS.get(deposit['redeemMethod'], '#')
+        # 取得 URL Scheme 和網頁連結
+        redeem_info = REDEEM_LINKS.get(deposit['redeemMethod'], {'app': '#', 'web': '#'})
+        app_link = redeem_info['app']
+        web_link = redeem_info['web']
         google_maps_link = f"https://www.google.com/maps/search/{deposit['store']}"
         
+        # 使用 JavaScript 來嘗試開啟 App，失敗則開啟網頁
+        open_app_script = f"""
+        <script>
+        function openApp_{deposit['id']}() {{
+            var appUrl = '{app_link}';
+            var webUrl = '{web_link}';
+            var start = Date.now();
+            
+            // 嘗試開啟 App
+            window.location.href = appUrl;
+            
+            // 如果 2 秒後還在頁面上，表示沒有安裝 App，則開啟網頁
+            setTimeout(function() {{
+                if (Date.now() - start < 2500) {{
+                    window.open(webUrl, '_blank');
+                }}
+            }}, 2000);
+        }}
+        </script>
+        """
+        
         html += f"""
+        {open_app_script}
         <div style="padding: 24px; border-radius: 16px; {card_style} box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="margin-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
@@ -230,9 +270,13 @@ def get_deposits_display():
                 </div>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="{redeem_link}" target="_blank" 
-                   style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
-                    🔗 前往兌換頁面
+                <button onclick="openApp_{deposit['id']}()" 
+                   style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;">
+                    📱 開啟 {deposit['redeemMethod']} App
+                </button>
+                <a href="{web_link}" target="_blank" 
+                   style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
+                    🌐 網頁版
                 </a>
                 <a href="{google_maps_link}" target="_blank" 
                    style="background: #2563eb; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
@@ -338,7 +382,6 @@ with gr.Blocks(
                 scale=1
             )
         
-        # 使用下拉選單選擇日期
         expiry_date_input = gr.Dropdown(
             label="📅 到期日",
             choices=get_date_options(),
