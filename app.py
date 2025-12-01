@@ -66,6 +66,24 @@ def format_date(date_str):
     except:
         return date_str
 
+def get_date_options():
+    """生成未來90天的日期選項"""
+    options = []
+    today = datetime.now()
+    for i in range(91):  # 今天 + 未來90天
+        date = today + timedelta(days=i)
+        date_str = date.strftime('%Y-%m-%d')
+        display_str = date.strftime('%Y年%m月%d日 (%a)')
+        # 翻譯星期
+        weekday_map = {
+            'Mon': '週一', 'Tue': '週二', 'Wed': '週三', 
+            'Thu': '週四', 'Fri': '週五', 'Sat': '週六', 'Sun': '週日'
+        }
+        for eng, chi in weekday_map.items():
+            display_str = display_str.replace(eng, chi)
+        options.append((display_str, date_str))
+    return options
+
 def add_deposit(item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not all([item, store, redeem_method, expiry_date]):
@@ -77,17 +95,6 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
             return "❌ 數量必須大於 0", get_deposits_display(), get_statistics(), get_deposit_choices()
     except:
         return "❌ 數量格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
-    
-    # 處理日期格式
-    try:
-        if isinstance(expiry_date, str):
-            if 'T' in expiry_date:
-                expiry_date = expiry_date.split('T')[0]
-            datetime.strptime(expiry_date, '%Y-%m-%d')
-        else:
-            return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
-    except:
-        return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
     
     deposits = load_deposits()
     new_deposit = {
@@ -331,10 +338,12 @@ with gr.Blocks(
                 scale=1
             )
         
-        expiry_date_input = gr.DateTime(
+        # 使用下拉選單選擇日期
+        expiry_date_input = gr.Dropdown(
             label="📅 到期日",
-            include_time=False,
-            type="string"
+            choices=get_date_options(),
+            value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+            interactive=True
         )
         
         add_status = gr.Markdown()
