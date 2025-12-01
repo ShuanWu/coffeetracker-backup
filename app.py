@@ -427,21 +427,22 @@ def refresh_display(username):
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
+    css="""
+    .date-picker input {
+        cursor: pointer !important;
+    }
+    """
 ) as app:
     
     # 儲存當前使用者
     current_user = gr.State(None)
     
     gr.HTML("""
-        <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
-            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                <div style="flex: 1;">
-                    <h1 style="font-size: 36px; font-weight: bold; color: #1f2937; margin: 0;">
-                        咖啡寄杯記錄系統
-                    </h1>
-                    <p style="color: #6b7280; margin-top: 8px; font-size: 16px;">管理你的咖啡寄杯，不怕忘記兌換 ☕✨</p>
-                </div>
-            </div>
+        <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
+            <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">
+                咖啡寄杯記錄系統
+            </h1>
+            <p style="color: #6b7280; margin-top: 8px; font-size: 14px;">管理你的咖啡寄杯，不怕忘記兌換 ☕✨</p>
         </div>
     """)
     
@@ -500,12 +501,11 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用日期選擇器（月曆模式）
-            expiry_date_input = gr.DateTime(
+            # 使用文字輸入框模擬日期選擇
+            expiry_date_input = gr.Textbox(
                 label="📅 到期日",
-                include_time=False,
-                type="string",
-                value=None
+                placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
+                info="請輸入日期，格式為 YYYY-MM-DD"
             )
             
             add_status = gr.Markdown()
