@@ -1,6 +1,6 @@
 import gradio as gr
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import hashlib
 
@@ -192,10 +192,20 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    # 處理日期格式
-    if isinstance(expiry_date, str):
-        if 'T' in expiry_date:
-            expiry_date = expiry_date.split('T')[0]
+    # 處理日期格式 - 支援多種格式
+    try:
+        if isinstance(expiry_date, str):
+            # 移除時間部分
+            if 'T' in expiry_date:
+                expiry_date = expiry_date.split('T')[0]
+            # 驗證日期格式
+            datetime.strptime(expiry_date, '%Y-%m-%d')
+        elif isinstance(expiry_date, date):
+            expiry_date = expiry_date.strftime('%Y-%m-%d')
+        else:
+            return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    except:
+        return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -427,11 +437,6 @@ def refresh_display(username):
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
-    css="""
-    .date-picker input {
-        cursor: pointer !important;
-    }
-    """
 ) as app:
     
     # 儲存當前使用者
@@ -501,12 +506,32 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用文字輸入框模擬日期選擇
+            # 使用 HTML5 原生日期選擇器
             expiry_date_input = gr.Textbox(
                 label="📅 到期日",
-                placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
-                info="請輸入日期，格式為 YYYY-MM-DD"
+                placeholder="請點擊選擇日期",
+                elem_id="date-picker",
+                interactive=True
             )
+            
+            gr.HTML("""
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 找到日期輸入框
+                const dateInput = document.querySelector('#date-picker input');
+                if (dateInput) {
+                    // 設定為 date 類型
+                    dateInput.type = 'date';
+                    // 設定最小日期為今天
+                    dateInput.min = new Date().toISOString().split('T')[0];
+                    // 設定預設值為 30 天後
+                    const defaultDate = new Date();
+                    defaultDate.setDate(defaultDate.getDate() + 30);
+                    dateInput.value = defaultDate.toISOString().split('T')[0];
+                }
+            });
+            </script>
+            """)
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
