@@ -177,19 +177,6 @@ def format_date(date_str):
     except:
         return date_str
 
-def generate_date_options():
-    """生成日期選項（未來90天）"""
-    options = []
-    today = datetime.now()
-    for i in range(91):
-        date = today + timedelta(days=i)
-        date_str = date.strftime('%Y-%m-%d')
-        # 格式化顯示：2025-12-01 (週一)
-        weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
-        display = f"{date.strftime('%Y-%m-%d')} ({weekday})"
-        options.append((display, date_str))
-    return options
-
 def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not username:
@@ -204,6 +191,13 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
             return "❌ 數量必須大於 0", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    # 處理日期格式
+    if isinstance(expiry_date, str):
+        if 'T' in expiry_date:
+            expiry_date = expiry_date.split('T')[0]
+        if ' ' in expiry_date:
+            expiry_date = expiry_date.split(' ')[0]
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -504,13 +498,12 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用下拉選單作為日期選擇器
-            expiry_date_input = gr.Dropdown(
+            # 使用 Gradio 5.x/6.x 的 DateTime 組件（支援月曆）
+            expiry_date_input = gr.DateTime(
                 label="📅 到期日",
-                choices=generate_date_options(),
-                value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
-                interactive=True,
-                allow_custom_value=False
+                include_time=False,
+                type="string",
+                value=datetime.now() + timedelta(days=30)
             )
             
             add_status = gr.Markdown()
