@@ -78,11 +78,17 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
     except:
         return "❌ 數量格式錯誤", get_deposits_display(), get_statistics(), gr.update(choices=[])
     
-    # 驗證日期格式
+    # 處理日期格式（Gradio 的 DateTime 組件返回的格式）
     try:
-        datetime.strptime(expiry_date, '%Y-%m-%d')
+        if isinstance(expiry_date, str):
+            # 如果是字串，嘗試解析
+            if 'T' in expiry_date:
+                expiry_date = expiry_date.split('T')[0]
+            datetime.strptime(expiry_date, '%Y-%m-%d')
+        else:
+            return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), gr.update(choices=[])
     except:
-        return "❌ 日期格式錯誤，請使用 YYYY-MM-DD", get_deposits_display(), get_statistics(), gr.update(choices=[])
+        return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), gr.update(choices=[])
     
     deposits = load_deposits()
     new_deposit = {
@@ -326,9 +332,11 @@ with gr.Blocks(
                 scale=1
             )
         
-        expiry_date_input = gr.Textbox(
-            label="📅 到期日", 
-            placeholder="YYYY-MM-DD (例如：2025-12-31)"
+        # 使用 DateTime 組件作為日期選擇器
+        expiry_date_input = gr.DateTime(
+            label="📅 到期日",
+            include_time=False,
+            type="string"
         )
         
         add_status = gr.Markdown()
