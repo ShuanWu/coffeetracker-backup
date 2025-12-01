@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 import os
 import hashlib
+import calendar
 
 # 資料檔案路徑
 USERS_FILE = 'users.json'
@@ -177,22 +178,197 @@ def format_date(date_str):
     except:
         return date_str
 
-def get_date_options():
-    """生成未來90天的日期選項"""
-    options = []
+def generate_calendar_html():
+    """生成月曆選擇器 HTML"""
     today = datetime.now()
-    for i in range(91):
-        date = today + timedelta(days=i)
-        date_str = date.strftime('%Y-%m-%d')
-        display_str = date.strftime('%Y年%m月%d日 (%a)')
-        weekday_map = {
-            'Mon': '週一', 'Tue': '週二', 'Wed': '週三', 
-            'Thu': '週四', 'Fri': '週五', 'Sat': '週六', 'Sun': '週日'
+    
+    html = """
+    <style>
+        .calendar-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 0 auto;
         }
-        for eng, chi in weekday_map.items():
-            display_str = display_str.replace(eng, chi)
-        options.append((display_str, date_str))
-    return options
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .calendar-header button {
+            background: #d97706;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .calendar-header button:hover {
+            background: #b45309;
+        }
+        .calendar-header h3 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 18px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+        .calendar-day-header {
+            text-align: center;
+            font-weight: bold;
+            color: #6b7280;
+            padding: 8px;
+            font-size: 14px;
+        }
+        .calendar-day {
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .calendar-day:hover {
+            background: #fef3c7;
+        }
+        .calendar-day.today {
+            background: #fef3c7;
+            font-weight: bold;
+            border: 2px solid #d97706;
+        }
+        .calendar-day.selected {
+            background: #d97706;
+            color: white;
+            font-weight: bold;
+        }
+        .calendar-day.disabled {
+            color: #d1d5db;
+            cursor: not-allowed;
+        }
+        .calendar-day.disabled:hover {
+            background: transparent;
+        }
+        .selected-date-display {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+    </style>
+    
+    <div class="calendar-container">
+        <div class="calendar-header">
+            <button onclick="changeMonth(-1)">◀ 上月</button>
+            <h3 id="currentMonth"></h3>
+            <button onclick="changeMonth(1)">下月 ▶</button>
+        </div>
+        <div class="calendar-grid">
+            <div class="calendar-day-header">日</div>
+            <div class="calendar-day-header">一</div>
+            <div class="calendar-day-header">二</div>
+            <div class="calendar-day-header">三</div>
+            <div class="calendar-day-header">四</div>
+            <div class="calendar-day-header">五</div>
+            <div class="calendar-day-header">六</div>
+            <div id="calendarDays"></div>
+        </div>
+        <div class="selected-date-display" id="selectedDateDisplay">
+            請選擇到期日
+        </div>
+    </div>
+    
+    <script>
+        let currentDate = new Date();
+        let selectedDate = null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('currentMonth').textContent = 
+                year + '年' + (month + 1) + '月';
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let calendarHTML = '';
+            
+            // 空白日期
+            for (let i = 0; i < firstDay; i++) {
+                calendarHTML += '<div class="calendar-day disabled"></div>';
+            }
+            
+            // 日期
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = year + '-' + 
+                    String(month + 1).padStart(2, '0') + '-' + 
+                    String(day).padStart(2, '0');
+                
+                let classes = 'calendar-day';
+                
+                // 過去的日期標記為 disabled
+                if (date < today) {
+                    classes += ' disabled';
+                } else if (date.toDateString() === today.toDateString()) {
+                    classes += ' today';
+                }
+                
+                if (selectedDate === dateStr) {
+                    classes += ' selected';
+                }
+                
+                const onclick = date >= today ? 
+                    `onclick="selectDate('${dateStr}')"` : '';
+                
+                calendarHTML += 
+                    `<div class="${classes}" ${onclick}>${day}</div>`;
+            }
+            
+            document.getElementById('calendarDays').innerHTML = calendarHTML;
+        }
+        
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+        
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            renderCalendar();
+            
+            const date = new Date(dateStr);
+            const displayStr = date.getFullYear() + '年' + 
+                (date.getMonth() + 1) + '月' + 
+                date.getDate() + '日';
+            
+            document.getElementById('selectedDateDisplay').textContent = 
+                '已選擇：' + displayStr;
+            
+            // 觸發 Gradio 更新
+            const event = new CustomEvent('dateSelected', { detail: dateStr });
+            document.dispatchEvent(event);
+        }
+        
+        // 初始化
+        renderCalendar();
+    </script>
+    """
+    
+    return html
 
 def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
@@ -358,9 +534,9 @@ def get_deposits_display(username):
                     </span>
                 </div>
                 <div style="color: #4b5563; line-height: 2; font-size: 15px;">
-                    <div style="margin-bottom: 6px;">📍 <strong>商店：</strong>{deposit['store']}</div>
-                    <div style="margin-bottom: 6px;">📦 <strong>兌換途徑：</strong>{deposit['redeemMethod']}</div>
-                    <div>📅 <strong>到期日：</strong>{format_date(deposit['expiryDate'])} 
+                    <div style="margin-bottom: 6px;">商店：{deposit['store']}</div>
+                    <div style="margin-bottom: 6px;">兌換途徑：{deposit['redeemMethod']}</div>
+                    <div>到期日：{format_date(deposit['expiryDate'])} 
                         <span style="color: {status_color}; font-weight: 600;">{status_text}</span>
                     </div>
                 </div>
@@ -368,22 +544,19 @@ def get_deposits_display(username):
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
                 <a href="{app_link}" target="_blank" 
                    style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s; box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);">
-                    📱 開啟 {app_name} App
+                    開啟 {app_name} App
                 </a>
                 <a href="{web_link}" target="_blank" 
                    style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
-                    🌐 網頁版
+                    網頁版
                 </a>
                 <a href="{google_maps_link}" target="_blank" 
                    style="background: #2563eb; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
-                    🗺️ 查看商店位置
+                    查看商店位置
                 </a>
             </div>
             <div style="padding: 12px; background: #f9fafb; border-radius: 8px; font-size: 12px; color: #6b7280;">
-                💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟手機 App，如果沒有安裝，請點擊「網頁版」
-            </div>
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
-                記錄 ID: {deposit['id'][:8]}... | 建立時間: {deposit.get('createdAt', 'N/A')[:10]}
+                提示：點擊「開啟 App」會嘗試開啟手機 App，如果沒有安裝，請點擊「網頁版」
             </div>
         </div>
         """
@@ -408,7 +581,7 @@ def get_statistics(username):
     
     html = f"""
     <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 24px;">
-        <h3 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 20px;">📊 統計資訊</h3>
+        <h3 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 20px;">統計資訊</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 20px; text-align: center;">
             <div style="padding: 16px; background: #fffbeb; border-radius: 12px;">
                 <p style="font-size: 36px; font-weight: bold; color: #d97706; margin: 0;">{total_cups}</p>
@@ -437,7 +610,7 @@ def refresh_display(username):
 
 # 建立 Gradio 介面
 with gr.Blocks(
-    title="☕ 咖啡寄杯記錄",
+    title="咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
 ) as app:
     
@@ -454,7 +627,7 @@ with gr.Blocks(
                     <h1 style="font-size: 36px; font-weight: bold; color: #1f2937; margin: 0; background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                         咖啡寄杯記錄系統
                     </h1>
-                    <p style="color: #6b7280; margin-top: 8px; font-size: 16px;">管理你的咖啡寄杯，不怕忘記兌換 ☕✨</p>
+                    <p style="color: #6b7280; margin-top: 8px; font-size: 16px;">管理你的咖啡寄杯，不怕忘記兌換</p>
                 </div>
             </div>
         </div>
@@ -463,13 +636,13 @@ with gr.Blocks(
     # 登入/註冊區域
     with gr.Column(visible=True) as login_area:
         with gr.Tabs():
-            with gr.Tab("🔐 登入"):
+            with gr.Tab("登入"):
                 login_status = gr.Markdown()
                 login_username = gr.Textbox(label="使用者名稱", placeholder="請輸入使用者名稱")
                 login_password = gr.Textbox(label="密碼", type="password", placeholder="請輸入密碼")
                 login_btn = gr.Button("登入", variant="primary", size="lg")
             
-            with gr.Tab("📝 註冊"):
+            with gr.Tab("註冊"):
                 register_status = gr.Markdown()
                 register_username = gr.Textbox(label="使用者名稱", placeholder="至少 3 個字元")
                 register_password = gr.Textbox(label="密碼", type="password", placeholder="至少 6 個字元")
@@ -480,19 +653,19 @@ with gr.Blocks(
     with gr.Column(visible=False) as main_area:
         with gr.Row():
             user_info = gr.Markdown()
-            logout_btn = gr.Button("🚪 登出", size="sm")
+            logout_btn = gr.Button("登出", size="sm")
         
         gr.Markdown("---")
         
-        with gr.Accordion("➕ 新增寄杯記錄", open=True):
+        with gr.Accordion("新增寄杯記錄", open=True):
             with gr.Row():
                 item_input = gr.Textbox(
-                    label="☕ 咖啡品項", 
+                    label="咖啡品項", 
                     placeholder="例如：美式咖啡、拿鐵",
                     scale=2
                 )
                 quantity_input = gr.Number(
-                    label="🔢 數量（杯）", 
+                    label="數量（杯）", 
                     value=1, 
                     minimum=1, 
                     precision=0,
@@ -501,47 +674,64 @@ with gr.Blocks(
             
             with gr.Row():
                 store_input = gr.Dropdown(
-                    label="🏪 商店名稱", 
+                    label="商店名稱", 
                     choices=STORE_OPTIONS,
-                    scale=1
+                    scale=1,
+                    interactive=True
                 )
                 redeem_method_input = gr.Dropdown(
-                    label="📦 兌換途徑", 
+                    label="兌換途徑", 
                     choices=REDEEM_METHODS,
-                    scale=1
+                    scale=1,
+                    interactive=True
                 )
             
-            expiry_date_input = gr.Dropdown(
-                label="📅 到期日",
-                choices=get_date_options(),
-                value=(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
-                interactive=True
+            gr.Markdown("### 選擇到期日")
+            expiry_date_input = gr.Textbox(
+                label="選擇的日期",
+                value="",
+                interactive=False,
+                visible=False
             )
+            calendar_display = gr.HTML(value=generate_calendar_html())
             
             add_status = gr.Markdown()
-            add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+            add_btn = gr.Button("儲存記錄", variant="primary", size="lg")
         
         gr.Markdown("---")
         
-        with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
-            gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
+        with gr.Accordion("兌換 / 刪除寄杯記錄", open=True):
+            gr.Markdown("**提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
             action_status = gr.Markdown()
             deposit_selector = gr.Dropdown(
-                label="📋 選擇寄杯記錄",
+                label="選擇寄杯記錄",
                 choices=[],
                 interactive=True
             )
             
             with gr.Row():
-                redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="lg", scale=2)
-                delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="lg", scale=1)
-                refresh_btn = gr.Button("🔄 重新整理", size="lg", scale=1)
+                redeem_btn = gr.Button("兌換一杯", variant="primary", size="lg", scale=2)
+                delete_btn = gr.Button("刪除記錄", variant="stop", size="lg", scale=1)
+                refresh_btn = gr.Button("重新整理", size="lg", scale=1)
         
         gr.Markdown("---")
-        gr.Markdown("### 📋 所有寄杯記錄")
+        gr.Markdown("### 所有寄杯記錄")
         
         deposits_display = gr.HTML(value=get_deposits_display(None))
         statistics_display = gr.HTML(value=get_statistics(None))
+    
+    # JavaScript 監聽日期選擇
+    app.load(js="""
+    function() {
+        document.addEventListener('dateSelected', function(e) {
+            const dateInput = document.querySelector('input[type="text"][readonly]');
+            if (dateInput) {
+                dateInput.value = e.detail;
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+    }
+    """)
     
     # 事件處理 - 註冊
     register_btn.click(
@@ -556,7 +746,7 @@ with gr.Blocks(
         inputs=[login_username, login_password],
         outputs=[login_status, login_area, main_area, current_user]
     ).then(
-        fn=lambda u: (f"👤 使用者：**{u}**" if u else "", get_deposits_display(u), get_statistics(u), get_deposit_choices(u)),
+        fn=lambda u: (f"使用者：**{u}**" if u else "", get_deposits_display(u), get_statistics(u), get_deposit_choices(u)),
         inputs=[current_user],
         outputs=[user_info, deposits_display, statistics_display, deposit_selector]
     )
