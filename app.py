@@ -192,12 +192,24 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    # 處理日期格式
-    if isinstance(expiry_date, str):
-        if 'T' in expiry_date:
-            expiry_date = expiry_date.split('T')[0]
-        if ' ' in expiry_date:
-            expiry_date = expiry_date.split(' ')[0]
+    # 處理日期格式 - 支援多種格式
+    try:
+        if isinstance(expiry_date, str):
+            # 移除時間部分
+            if 'T' in expiry_date:
+                expiry_date = expiry_date.split('T')[0]
+            if ' ' in expiry_date:
+                expiry_date = expiry_date.split(' ')[0]
+            # 驗證日期格式
+            datetime.strptime(expiry_date, '%Y-%m-%d')
+        elif hasattr(expiry_date, 'strftime'):
+            # 如果是 datetime 物件
+            expiry_date = expiry_date.strftime('%Y-%m-%d')
+        else:
+            return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    except Exception as e:
+        print(f"日期處理錯誤: {e}, 輸入值: {expiry_date}, 類型: {type(expiry_date)}")
+        return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -498,13 +510,21 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用 Gradio 5.x/6.x 的 DateTime 組件（支援月曆）
-            expiry_date_input = gr.DateTime(
-                label="📅 到期日",
-                include_time=False,
-                type="string",
-                value=datetime.now() + timedelta(days=30)
-            )
+            # 使用 DateTime 組件（月曆模式）
+            try:
+                expiry_date_input = gr.DateTime(
+                    label="📅 到期日",
+                    include_time=False,
+                    type="string"
+                )
+            except Exception as e:
+                print(f"DateTime 組件初始化失敗: {e}")
+                # 如果 DateTime 不支援，回退到 Textbox
+                expiry_date_input = gr.Textbox(
+                    label="📅 到期日",
+                    placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
+                    info="請輸入日期，格式為 YYYY-MM-DD"
+                )
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
