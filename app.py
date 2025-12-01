@@ -25,12 +25,12 @@ REDEEM_LINKS = {
         'name': 'Line 禮物'
     },
     '7-11': {
-        'app': 'openpoint://',
+        'app': 'openpointapp://gofeature?featureId=HOMACB02',
         'web': 'https://www.7-11.com.tw/',
         'name': 'OPENPOINT'
     },
     '全家': {
-        'app': 'fami://',
+        'app': 'familymart://action.go/preorder/myproduct',
         'web': 'https://www.family.com.tw/',
         'name': '全家便利商店'
     },
