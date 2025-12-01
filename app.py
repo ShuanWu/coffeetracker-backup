@@ -69,14 +69,14 @@ def format_date(date_str):
 def add_deposit(item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not all([item, store, redeem_method, expiry_date]):
-        return "❌ 請填寫所有欄位", create_deposits_ui(), get_statistics()
+        return "❌ 請填寫所有欄位", get_deposits_display(), get_statistics(), get_deposit_choices()
     
     try:
         quantity = int(quantity)
         if quantity < 1:
-            return "❌ 數量必須大於 0", create_deposits_ui(), get_statistics()
+            return "❌ 數量必須大於 0", get_deposits_display(), get_statistics(), get_deposit_choices()
     except:
-        return "❌ 數量格式錯誤", create_deposits_ui(), get_statistics()
+        return "❌ 數量格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
     
     # 處理日期格式
     try:
@@ -85,9 +85,9 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
                 expiry_date = expiry_date.split('T')[0]
             datetime.strptime(expiry_date, '%Y-%m-%d')
         else:
-            return "❌ 日期格式錯誤", create_deposits_ui(), get_statistics()
+            return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
     except:
-        return "❌ 日期格式錯誤", create_deposits_ui(), get_statistics()
+        return "❌ 日期格式錯誤", get_deposits_display(), get_statistics(), get_deposit_choices()
     
     deposits = load_deposits()
     new_deposit = {
@@ -102,12 +102,30 @@ def add_deposit(item, quantity, store, redeem_method, expiry_date):
     deposits.append(new_deposit)
     
     if save_deposits(deposits):
-        return "✅ 新增成功！", create_deposits_ui(), get_statistics()
+        return "✅ 新增成功！", get_deposits_display(), get_statistics(), get_deposit_choices()
     else:
-        return "❌ 儲存失敗", create_deposits_ui(), get_statistics()
+        return "❌ 儲存失敗", get_deposits_display(), get_statistics(), get_deposit_choices()
+
+def get_deposit_choices():
+    """取得寄杯記錄選項（用於下拉選單）"""
+    deposits = load_deposits()
+    if not deposits:
+        return gr.update(choices=[], value=None)
+    
+    choices = []
+    for d in deposits:
+        expired_tag = " [已過期]" if is_expired(d['expiryDate']) else ""
+        expiring_tag = " [即將到期]" if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate']) else ""
+        label = f"{d['item']} - {d['store']} ({d['quantity']}杯) - 到期:{format_date(d['expiryDate'])}{expired_tag}{expiring_tag}"
+        choices.append((label, d['id']))
+    
+    return gr.update(choices=choices, value=None)
 
 def redeem_one(deposit_id):
     """兌換一杯"""
+    if not deposit_id:
+        return "❌ 請選擇要兌換的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    
     deposits = load_deposits()
     updated = False
     deposit_name = ""
@@ -126,12 +144,15 @@ def redeem_one(deposit_id):
     
     if updated:
         save_deposits(deposits)
-        return message, create_deposits_ui(), get_statistics()
+        return message, get_deposits_display(), get_statistics(), get_deposit_choices()
     else:
-        return "❌ 找不到該記錄", create_deposits_ui(), get_statistics()
+        return "❌ 找不到該記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
 
 def delete_deposit(deposit_id):
     """刪除寄杯記錄"""
+    if not deposit_id:
+        return "❌ 請選擇要刪除的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
+    
     deposits = load_deposits()
     deposit_name = ""
     
@@ -143,26 +164,25 @@ def delete_deposit(deposit_id):
     deposits = [d for d in deposits if d['id'] != deposit_id]
     save_deposits(deposits)
     
-    return f"✅ 已刪除 {deposit_name} 的記錄", create_deposits_ui(), get_statistics()
+    return f"✅ 已刪除 {deposit_name} 的記錄", get_deposits_display(), get_statistics(), get_deposit_choices()
 
-def create_deposits_ui():
-    """建立寄杯記錄的互動式 UI"""
+def get_deposits_display():
+    """取得寄杯記錄顯示"""
     deposits = load_deposits()
     
     if not deposits:
-        empty_html = gr.HTML("""
+        return """
         <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="font-size: 64px; margin-bottom: 20px;">☕</div>
             <p style="font-size: 20px; color: #6b7280; margin-bottom: 10px;">還沒有寄杯記錄</p>
             <p style="font-size: 16px; color: #9ca3af;">點擊上方「新增寄杯記錄」開始記錄吧！</p>
         </div>
-        """)
-        return [empty_html]
+        """
     
     # 按到期日排序
     deposits.sort(key=lambda x: x.get('expiryDate', '9999-12-31'))
     
-    components = []
+    html = '<div style="display: flex; flex-direction: column; gap: 20px;">'
     
     for deposit in deposits:
         expired = is_expired(deposit['expiryDate'])
@@ -185,9 +205,8 @@ def create_deposits_ui():
         redeem_link = REDEEM_LINKS.get(deposit['redeemMethod'], '#')
         google_maps_link = f"https://www.google.com/maps/search/{deposit['store']}"
         
-        # 建立卡片 HTML
-        card_html = f"""
-        <div style="padding: 24px; border-radius: 16px; {card_style} box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;">
+        html += f"""
+        <div style="padding: 24px; border-radius: 16px; {card_style} box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="margin-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
                     <h3 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">{deposit['item']}</h3>
@@ -203,46 +222,24 @@ def create_deposits_ui():
                     </div>
                 </div>
             </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{redeem_link}" target="_blank" 
+                   style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
+                    🔗 前往兌換頁面
+                </a>
+                <a href="{google_maps_link}" target="_blank" 
+                   style="background: #2563eb; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
+                    🗺️ 查看商店位置
+                </a>
+            </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
+                記錄 ID: {deposit['id'][:8]}... | 建立時間: {deposit.get('createdAt', 'N/A')[:10]}
+            </div>
         </div>
         """
-        
-        with gr.Row():
-            with gr.Column(scale=4):
-                components.append(gr.HTML(card_html))
-            with gr.Column(scale=1):
-                # 建立按鈕組
-                with gr.Column():
-                    redeem_btn = gr.Button(
-                        "☕ 兌換一杯",
-                        variant="primary",
-                        size="sm",
-                        elem_id=f"redeem_{deposit['id']}"
-                    )
-                    
-                    link_btn = gr.Button(
-                        "🔗 前往兌換頁面",
-                        variant="secondary",
-                        size="sm",
-                        link=redeem_link
-                    )
-                    
-                    map_btn = gr.Button(
-                        "🗺️ 查看商店位置",
-                        variant="secondary",
-                        size="sm",
-                        link=google_maps_link
-                    )
-                    
-                    delete_btn = gr.Button(
-                        "🗑️ 刪除記錄",
-                        variant="stop",
-                        size="sm",
-                        elem_id=f"delete_{deposit['id']}"
-                    )
-                    
-                    components.extend([redeem_btn, link_btn, map_btn, delete_btn])
     
-    return components
+    html += '</div>'
+    return html
 
 def get_statistics():
     """取得統計資訊"""
@@ -281,9 +278,9 @@ def get_statistics():
     """
     return html
 
-def refresh_all():
-    """重新整理所有顯示"""
-    return create_deposits_ui(), get_statistics()
+def refresh_display():
+    """重新整理顯示"""
+    return get_deposits_display(), get_statistics(), get_deposit_choices()
 
 # 建立 Gradio 介面
 with gr.Blocks(
@@ -341,103 +338,58 @@ with gr.Blocks(
         )
         
         add_status = gr.Markdown()
+        add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+    
+    gr.Markdown("---")
+    
+    with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
+        gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
+        action_status = gr.Markdown()
+        deposit_selector = gr.Dropdown(
+            label="📋 選擇寄杯記錄",
+            choices=[],
+            interactive=True
+        )
         
         with gr.Row():
-            add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg", scale=2)
+            redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="lg", scale=2)
+            delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="lg", scale=1)
             refresh_btn = gr.Button("🔄 重新整理", size="lg", scale=1)
     
     gr.Markdown("---")
-    gr.Markdown("### 📋 寄杯記錄列表")
+    gr.Markdown("### 📋 所有寄杯記錄")
     
-    action_status = gr.Markdown()
-    
-    # 寄杯記錄顯示區域
-    deposits_container = gr.Column()
-    
+    deposits_display = gr.HTML(value=get_deposits_display())
     statistics_display = gr.HTML(value=get_statistics())
-    
-    # 初始化顯示
-    with deposits_container:
-        deposits = load_deposits()
-        if not deposits:
-            gr.HTML("""
-            <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                <div style="font-size: 64px; margin-bottom: 20px;">☕</div>
-                <p style="font-size: 20px; color: #6b7280; margin-bottom: 10px;">還沒有寄杯記錄</p>
-                <p style="font-size: 16px; color: #9ca3af;">點擊上方「新增寄杯記錄」開始記錄吧！</p>
-            </div>
-            """)
-        else:
-            deposits.sort(key=lambda x: x.get('expiryDate', '9999-12-31'))
-            for deposit in deposits:
-                expired = is_expired(deposit['expiryDate'])
-                expiring = is_expiring_soon(deposit['expiryDate']) and not expired
-                
-                if expired:
-                    card_style = "background: #fef2f2; border: 2px solid #fca5a5;"
-                    status_text = "（已過期）"
-                    status_color = "#dc2626"
-                elif expiring:
-                    card_style = "background: #fefce8; border: 2px solid #fde047;"
-                    status_text = "（即將到期）"
-                    status_color = "#ca8a04"
-                else:
-                    card_style = "background: white; border: 1px solid #e5e7eb;"
-                    status_text = ""
-                    status_color = "#6b7280"
-                
-                redeem_link = REDEEM_LINKS.get(deposit['redeemMethod'], '#')
-                google_maps_link = f"https://www.google.com/maps/search/{deposit['store']}"
-                
-                with gr.Row():
-                    with gr.Column(scale=3):
-                        gr.HTML(f"""
-                        <div style="padding: 24px; border-radius: 16px; {card_style} box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-                                    <h3 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">{deposit['item']}</h3>
-                                    <span style="background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                                        {deposit['quantity']} 杯
-                                    </span>
-                                </div>
-                                <div style="color: #4b5563; line-height: 2; font-size: 15px;">
-                                    <div style="margin-bottom: 6px;">📍 <strong>商店：</strong>{deposit['store']}</div>
-                                    <div style="margin-bottom: 6px;">📦 <strong>兌換途徑：</strong>{deposit['redeemMethod']}</div>
-                                    <div>📅 <strong>到期日：</strong>{format_date(deposit['expiryDate'])} 
-                                        <span style="color: {status_color}; font-weight: 600;">{status_text}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        """)
-                    
-                    with gr.Column(scale=1, min_width=160):
-                        redeem_btn = gr.Button("☕ 兌換一杯", variant="primary", size="sm")
-                        gr.HTML(f'<a href="{redeem_link}" target="_blank" style="display: block; margin: 8px 0;"><button style="width: 100%; padding: 8px; background: #9333ea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">🔗 前往兌換頁面</button></a>')
-                        gr.HTML(f'<a href="{google_maps_link}" target="_blank" style="display: block; margin: 8px 0;"><button style="width: 100%; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">🗺️ 查看商店位置</button></a>')
-                        delete_btn = gr.Button("🗑️ 刪除記錄", variant="stop", size="sm")
-                        
-                        # 綁定事件
-                        redeem_btn.click(
-                            fn=lambda did=deposit['id']: redeem_one(did),
-                            outputs=[action_status, deposits_container, statistics_display]
-                        )
-                        
-                        delete_btn.click(
-                            fn=lambda did=deposit['id']: delete_deposit(did),
-                            outputs=[action_status, deposits_container, statistics_display]
-                        )
     
     # 事件處理
     add_btn.click(
         fn=add_deposit,
         inputs=[item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
-        outputs=[add_status, deposits_container, statistics_display]
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    redeem_btn.click(
+        fn=redeem_one,
+        inputs=[deposit_selector],
+        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    delete_btn.click(
+        fn=delete_deposit,
+        inputs=[deposit_selector],
+        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
     refresh_btn.click(
-        fn=lambda: ("", *refresh_all()),
-        outputs=[action_status, deposits_container, statistics_display]
+        fn=refresh_display,
+        outputs=[deposits_display, statistics_display, deposit_selector]
+    )
+    
+    # 初始載入
+    app.load(
+        fn=refresh_display,
+        outputs=[deposits_display, statistics_display, deposit_selector]
     )
 
 if __name__ == "__main__":
