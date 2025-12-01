@@ -431,9 +431,8 @@ demo = gr.Interface(
     inputs=None,
     outputs=gr.HTML(label="咖啡寄杯追蹤器"),
     title="☕ 咖啡寄杯追蹤器",
-    description="管理你的咖啡寄杯，不怕忘記兌換！",
-    allow_flagging="never"
+    description="管理你的咖啡寄杯，不怕忘記兌換！"
 )
 
 if __name__ == "__main__":
-    demo.launch(show_error=True)
+    demo.launch()
