@@ -1,12 +1,33 @@
 ---
-title: CoffeeCount
-emoji: 💻
-colorFrom: pink
-colorTo: green
+title: 咖啡寄杯追蹤器
+emoji: ☕
+colorFrom: red
+colorTo: yellow
 sdk: gradio
-sdk_version: 6.0.1
+sdk_version: 4.44.0
 app_file: app.py
 pinned: false
+license: mit
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+# 咖啡寄杯追蹤器
+
+管理你的咖啡寄杯，不怕忘記兌換！
+
+## 功能特色
+
+- ☕ 記錄咖啡寄杯資訊
+- 📅 到期日提醒（即將到期/已過期）
+- 🔗 快速連結到兌換頁面
+- 📍 查看商店位置
+- 📊 統計資訊總覽
+- 💾 資料儲存在瀏覽器本地
+
+## 使用方式
+
+1. 點擊「新增寄杯」按鈕
+2. 填寫咖啡品項、數量、商店等資訊
+3. 設定到期日
+4. 儲存後即可管理你的寄杯記錄
+
+資料會自動儲存在你的瀏覽器中，下次開啟時會自動載入。
