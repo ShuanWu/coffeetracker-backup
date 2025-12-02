@@ -1149,7 +1149,7 @@ with gr.Blocks(
                     interactive=True
                 )
                 
-                # 將輸入框轉換為日期選擇器並禁用手動輸入
+                # 將輸入框轉換為日期選擇器
                 gr.HTML(f"""
                 <script>
                 function initDatePicker() {{
@@ -1161,12 +1161,24 @@ with gr.Blocks(
                             input.value = '{today}';
                             input.style.cursor = 'pointer';
                             
-                            // 移除 readOnly，改用其他方式防止輸入
-                            input.setAttribute('onkeydown', 'return false;');
-                            input.setAttribute('onpaste', 'return false;');
+                            // 只在用戶輸入時阻止，不阻止日期選擇器
+                            let isSelectingDate = false;
                             
-                            // 防止鍵盤輸入
+                            input.addEventListener('focus', function() {{
+                                isSelectingDate = true;
+                            }});
+                            
+                            input.addEventListener('blur', function() {{
+                                setTimeout(() => {{ isSelectingDate = false; }}, 100);
+                            }});
+                            
+                            // 防止鍵盤輸入（但不影響日期選擇器）
                             input.addEventListener('keydown', function(e) {{
+                                // 允許 Tab 和 Escape
+                                if (e.key === 'Tab' || e.key === 'Escape') {{
+                                    return true;
+                                }}
+                                // 阻止其他按鍵
                                 e.preventDefault();
                                 return false;
                             }});
@@ -1177,56 +1189,32 @@ with gr.Blocks(
                                 return false;
                             }});
                             
-                            // 點擊時觸發日期選擇器（使用多種方法）
-                            input.addEventListener('click', function(e) {{
-                                // 方法1: showPicker (Chrome/Edge)
-                                if (this.showPicker) {{
-                                    try {{
-                                        this.showPicker();
-                                    }} catch(err) {{
-                                        console.log('showPicker failed:', err);
-                                    }}
-                                }}
-                                
-                                // 方法2: 觸發 focus
-                                this.focus();
-                                
-                                // 方法3: 模擬點擊
-                                setTimeout(() => {{
-                                    const evt = new MouseEvent('mousedown', {{
-                                        bubbles: true,
-                                        cancelable: true,
-                                        view: window
-                                    }});
-                                    this.dispatchEvent(evt);
-                                }}, 10);
-                            }});
-                            
-                            // 防止選取文字
-                            input.addEventListener('selectstart', function(e) {{
+                            // 防止拖放
+                            input.addEventListener('drop', function(e) {{
                                 e.preventDefault();
                                 return false;
                             }});
                             
-                            // 防止雙擊選取
-                            input.addEventListener('mousedown', function(e) {{
-                                if (e.detail > 1) {{
-                                    e.preventDefault();
-                                }}
+                            // 防止選取文字（但不影響點擊）
+                            input.addEventListener('selectstart', function(e) {{
+                                e.preventDefault();
+                                return false;
                             }});
                         }}
                     }});
                 }}
                 
-                // 初始化
-                setTimeout(initDatePicker, 300);
-                setTimeout(initDatePicker, 1000); // 再次嘗試
+                // 多次初始化確保成功
+                setTimeout(initDatePicker, 100);
+                setTimeout(initDatePicker, 500);
+                setTimeout(initDatePicker, 1000);
                 
                 // 監聽 DOM 變化
                 const observer = new MutationObserver(initDatePicker);
                 observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
+
 
 
 
