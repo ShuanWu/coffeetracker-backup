@@ -20,29 +20,28 @@ REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
 
 # 兌換連結對應
 REDEEM_LINKS = {
-    '遠傳': {
-        'app': 'fetnet://',
-        'web': 'https://www.fetnet.net/',
-        'name': '遠傳心生活'
-    },
-    'Line禮物': {
-        'app': 'https://line.me/R/shop/gift/category/coffee',
-        'web': 'https://gift.line.me/',
-        'name': 'Line 禮物'
-    },
     '7-11': {
         'app': 'openpointapp://gofeature?featureId=HOMACB02',
-        'web': 'https://www.openpoint.com.tw/',
         'name': 'OPENPOINT'
     },
     '全家': {
         'app': 'familymart://action.go/preorder/myproduct',
-        'web': 'https://www.family.com.tw/',
         'name': '全家便利商店'
+    },    
+    '遠傳': {
+        'app': 'fetnet://',
+        'name': '遠傳心生活'
     },
+    'Line禮物': {
+        'app': 'https://line.me/R/shop/gift/category/coffee',
+        'name': 'Line 禮物'
+    },
+    '全家酷碰劵': {
+        'app': 'familymart://action.go/preorder/coupon',
+        'name': '全家酷碰劵'
+    },    
     '星巴克': {
         'app': 'starbucks://',
-        'web': 'https://www.starbucks.com.tw/',
         'name': '星巴克'
     }
 }
@@ -768,7 +767,7 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
     # 處理到期日
     if expiry_method == "選擇日期":
         final_expiry_date = expiry_date
-        if not final_expiry_date:
+        if not final_expiry_date or final_expiry_date.strip() == "":
             return "❌ 請選擇到期日", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     else:
         if not days_until or days_until < 1:
@@ -785,20 +784,27 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
+    # 驗證並清理日期格式
     try:
         if isinstance(final_expiry_date, str):
+            # 移除可能的空白和特殊字符
+            final_expiry_date = final_expiry_date.strip()
+            
+            # 處理各種可能的日期格式
             if 'T' in final_expiry_date:
                 final_expiry_date = final_expiry_date.split('T')[0]
             if ' ' in final_expiry_date:
                 final_expiry_date = final_expiry_date.split(' ')[0]
+            
+            # 驗證日期格式
             datetime.strptime(final_expiry_date, '%Y-%m-%d')
         elif hasattr(final_expiry_date, 'strftime'):
             final_expiry_date = final_expiry_date.strftime('%Y-%m-%d')
         else:
             return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except Exception as e:
-        print(f"日期處理錯誤: {e}")
-        return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+        print(f"日期處理錯誤: {e}, 收到的日期: {final_expiry_date}")
+        return f"❌ 日期格式錯誤（請確認已選擇日期）", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -1127,28 +1133,48 @@ with gr.Blocks(
                 interactive=True
             )
             
-            # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
+            # 日期選擇器（預設顯示）- 使用 Textbox 配合 JavaScript
             with gr.Column(visible=True) as date_picker_column:
-                expiry_date_input = gr.HTML(
-                    value="""
-                    <div style="margin: 10px 0;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
-                            📅 到期日
-                        </label>
-                        <input 
-                            type="date" 
-                            id="expiry_date_input"
-                            style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
-                            required
-                        />
-                    </div>
-                    <script>
-                        document.getElementById('expiry_date_input').addEventListener('click', function() {
-                            this.showPicker();
-                        });
-                    </script>
-                    """
+                expiry_date_input = gr.Textbox(
+                    label="📅 到期日",
+                    placeholder="請選擇日期",
+                    interactive=True,
+                    elem_id="expiry_date_textbox"
                 )
+                gr.HTML("""
+                <script>
+                    function initDateInput() {
+                        // 等待 Gradio 元素載入
+                        setTimeout(function() {
+                            const textboxes = document.querySelectorAll('#expiry_date_textbox input');
+                            textboxes.forEach(input => {
+                                if (input && input.type !== 'date') {
+                                    input.type = 'date';
+                                    input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;';
+                                    
+                                    // 點擊時打開日期選擇器
+                                    input.addEventListener('click', function() {
+                                        if (this.showPicker) {
+                                            this.showPicker();
+                                        }
+                                    });
+                                }
+                            });
+                        }, 500);
+                    }
+                    
+                    // 初始化
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', initDateInput);
+                    } else {
+                        initDateInput();
+                    }
+                    
+                    // 監聽 DOM 變化
+                    const observer = new MutationObserver(initDateInput);
+                    observer.observe(document.body, { childList: true, subtree: true });
+                </script>
+                """)
             
             # 天數輸入（預設隱藏）
             with gr.Column(visible=False) as days_input_column:
@@ -1311,25 +1337,4 @@ with gr.Blocks(
     def delete_and_refresh(user, deposit_id):
         """刪除並刷新顯示"""
         message, deposits, stats, choices = delete_deposit(user, deposit_id)
-        return message, deposits, stats, choices
-    
-    delete_btn.click(
-        fn=delete_and_refresh,
-        inputs=[current_user, deposit_selector],
-        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
-    )
-    
-    # 事件處理 - 重新整理
-    def refresh_all(user):
-        """重新整理所有顯示"""
-        deposits, stats, choices = refresh_display(user)
-        return deposits, stats, choices
-    
-    refresh_btn.click(
-        fn=refresh_all,
-        inputs=[current_user],
-        outputs=[deposits_display, statistics_display, deposit_selector]
-    )
-
-if __name__ == "__main__":
-    app.launch()
+        return message, deposits, stats
