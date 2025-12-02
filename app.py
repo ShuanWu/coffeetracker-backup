@@ -1154,6 +1154,7 @@ with gr.Blocks(
                 </script>
                 """)
 
+
             
             # 天數輸入（預設隱藏）
             with gr.Column(visible=False) as days_input_column:
