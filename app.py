@@ -1063,7 +1063,7 @@ with gr.Blocks(
                     interactive=True
                 )
 
-                # 日期選擇器 - 手機優化版
+                # 保留 gr.DateTime 但隱藏時間輸入框
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
@@ -1078,62 +1078,53 @@ with gr.Blocks(
                         elem_classes=["date-picker-container"]
                     )
                     
-                    # 手機版優化 JavaScript
-                    gr.HTML(f"""
+                    # 強制隱藏時間輸入框
+                    gr.HTML("""
                     <script>
-                    (function() {{
-                        function optimizeDatePickerForMobile() {{
-                            const dateInput = document.querySelector('#expiry_date_picker input[type="date"]') ||
-                                            document.querySelector('#expiry_date_picker input[type="datetime-local"]');
-                            
-                            if (dateInput && !dateInput.dataset.mobileOptimized) {{
-                                dateInput.dataset.mobileOptimized = 'true';
+                    (function() {
+                        function hideTimeInput() {
+                            const container = document.querySelector('#expiry_date_picker');
+                            if (container) {
+                                // 隱藏時間輸入框
+                                const timeInput = container.querySelector('.time, input.time');
+                                if (timeInput) {
+                                    timeInput.style.display = 'none';
+                                    timeInput.style.width = '0';
+                                    timeInput.style.height = '0';
+                                    timeInput.style.opacity = '0';
+                                    timeInput.style.visibility = 'hidden';
+                                    console.log('✅ 已隱藏時間輸入框');
+                                }
                                 
-                                // 檢測是否為移動設備
-                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                // 隱藏日曆按鈕
+                                const calendarBtn = container.querySelector('button.calendar');
+                                if (calendarBtn) {
+                                    calendarBtn.style.display = 'none';
+                                    console.log('✅ 已隱藏日曆按鈕');
+                                }
                                 
-                                if (isMobile) {{
-                                    console.log('✅ 移動設備檢測到，優化日期選擇器');
-                                    
-                                    // 設置最小日期
-                                    dateInput.min = '{today}';
-                                    
-                                    // 點擊時自動展開日曆
-                                    dateInput.addEventListener('click', function(e) {{
-                                        this.showPicker && this.showPicker();
-                                    }});
-                                    
-                                    // 防止手動輸入
-                                    dateInput.addEventListener('keydown', function(e) {{
-                                        if (e.key !== 'Tab' && e.key !== 'Escape') {{
-                                            e.preventDefault();
-                                        }}
-                                    }});
-                                    
-                                    // 確保日期格式正確
-                                    dateInput.addEventListener('change', function() {{
-                                        console.log('日期已選擇:', this.value);
-                                    }});
-                                }} else {{
-                                    console.log('✅ 桌面設備檢測到');
-                                    dateInput.min = '{today}';
-                                }}
-                            }}
-                        }}
+                                // 確保日期輸入框佔滿寬度
+                                const dateInput = container.querySelector('.datetime, input.datetime, input[type="date"]');
+                                if (dateInput) {
+                                    dateInput.style.width = '100%';
+                                    dateInput.style.flex = '1';
+                                    console.log('✅ 日期輸入框已調整');
+                                }
+                            }
+                        }
                         
-                        // 多次嘗試優化
-                        setTimeout(optimizeDatePickerForMobile, 100);
-                        setTimeout(optimizeDatePickerForMobile, 500);
-                        setTimeout(optimizeDatePickerForMobile, 1000);
+                        setTimeout(hideTimeInput, 100);
+                        setTimeout(hideTimeInput, 500);
+                        setTimeout(hideTimeInput, 1000);
                         
-                        // 監聽 DOM 變化
-                        new MutationObserver(optimizeDatePickerForMobile).observe(document.body, {{
+                        new MutationObserver(hideTimeInput).observe(document.body, {
                             childList: true,
                             subtree: true
-                        }});
-                    }})();
+                        });
+                    })();
                     </script>
                     """)
+
 
                 # 天數輸入（預設隱藏）
                 with gr.Column(visible=False) as days_input_column:
