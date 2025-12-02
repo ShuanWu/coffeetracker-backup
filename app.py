@@ -1132,7 +1132,7 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器（混合 HTML + Gradio 隱藏輸入）
+            # 日期選擇器 - 使用 HTML + 按鈕觸發時同步
             with gr.Column(visible=True) as date_picker_column:
                 gr.HTML("""
                 <div style="margin-bottom: 16px;">
@@ -1141,44 +1141,46 @@ with gr.Blocks(
                     </label>
                     <input 
                         type="date" 
-                        id="expiry_date_picker_visible"
+                        id="expiry_date_picker_main"
                         style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
                     />
                 </div>
                 <script>
-                    (function() {
-                        function initVisibleDatePicker() {
-                            const visiblePicker = document.getElementById('expiry_date_picker_visible');
-                            if (!visiblePicker) {
-                                setTimeout(initVisibleDatePicker, 100);
-                                return;
-                            }
-                            
-                            if (visiblePicker.hasAttribute('data-initialized')) {
-                                return;
-                            }
-                            visiblePicker.setAttribute('data-initialized', 'true');
-                            
-                            // 設置最小日期為今天
-                            const today = new Date().toISOString().split('T')[0];
-                            visiblePicker.setAttribute('min', today);
-                            
-                            // 設置預設值為今天
-                            if (!visiblePicker.value) {
-                                visiblePicker.value = today;
-                            }
-                            
-                            console.log('✅ 可見日期選擇器初始化完成，預設值:', visiblePicker.value);
+                (function() {
+                    function initDatePicker() {
+                        const picker = document.getElementById('expiry_date_picker_main');
+                        if (!picker) {
+                            setTimeout(initDatePicker, 100);
+                            return;
                         }
                         
-                        if (document.readyState === 'loading') {
-                            document.addEventListener('DOMContentLoaded', initVisibleDatePicker);
-                        } else {
-                            initVisibleDatePicker();
+                        if (picker.hasAttribute('data-initialized')) {
+                            return;
                         }
-                    })();
+                        picker.setAttribute('data-initialized', 'true');
+                        
+                        // 設置今天為最小日期
+                        const today = new Date().toISOString().split('T')[0];
+                        picker.min = today;
+                        picker.value = today;
+                        
+                        console.log('✅ 日期選擇器已初始化，預設值:', today);
+                    }
+                    
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', initDatePicker);
+                    } else {
+                        initDatePicker();
+                    }
+                })();
                 </script>
                 """)
+                
+                expiry_date_input = gr.Textbox(
+                    label="",
+                    visible=False,
+                    elem_id="expiry_date_hidden_field"
+                )
                 
                 expiry_date_input = gr.Textbox(
                     label="",
