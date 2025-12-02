@@ -1263,9 +1263,9 @@ with gr.Blocks(
         return None, login_vis, main_vis, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
     
     app.load(
-        fn=on_load,
-        outputs=[current_user, login_area, main_area, user_info, deposits_display, statistics_display, deposit_selector]
-    )
+    fn=on_load,
+    outputs=[current_user, login_area, main_area, user_info, deposits_display, statistics_display, deposit_selector]
+)
     
     # 切換輸入方式
     expiry_input_method.change(
@@ -1348,11 +1348,11 @@ with gr.Blocks(
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    item_input.submit(
-        fn=add_and_refresh,
-        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
-        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
-    )
+    # item_input.submit(
+    #     fn=add_and_refresh,
+    #     inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
+    #     outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    # )
     
     # 事件處理 - 兌換
     def redeem_and_refresh(user, deposit_id):
