@@ -16,5 +16,14 @@
     "redeemMethod": "Line禮物",
     "expiryDate": "2026-01-15",
     "createdAt": "2025-12-02T04:40:25.442727"
+  },
+  {
+    "id": "1764655011952",
+    "item": "特選拿鐵特大杯",
+    "quantity": 1,
+    "store": "全家",
+    "redeemMethod": "全家酷碰劵",
+    "expiryDate": "2025-12-07",
+    "createdAt": "2025-12-02T06:56:51.952208"
   }
 ]
