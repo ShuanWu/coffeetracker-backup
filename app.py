@@ -20,14 +20,6 @@ REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
 
 # 兌換連結對應
 REDEEM_LINKS = {
-    '7-11': {
-        'app': 'openpointapp://gofeature?featureId=HOMACB02',
-        'name': 'OPENPOINT'
-    },
-    '全家': {
-        'app': 'familymart://action.go/preorder/myproduct',
-        'name': '全家便利商店'
-    },    
     '遠傳': {
         'app': 'fetnet://',
         'name': '遠傳心生活'
@@ -36,10 +28,14 @@ REDEEM_LINKS = {
         'app': 'https://line.me/R/shop/gift/category/coffee',
         'name': 'Line 禮物'
     },
-    '全家酷碰劵': {
-        'app': 'familymart://action.go/preorder/coupon',
-        'name': '全家酷碰劵'
-    },    
+    '7-11': {
+        'app': 'openpointapp://gofeature?featureId=HOMACB02',
+        'name': 'OPENPOINT'
+    },
+    '全家': {
+        'app': 'familymart://action.go/preorder/myproduct',
+        'name': '全家便利商店'
+    },
     '星巴克': {
         'app': 'starbucks://',
         'name': '星巴克'
@@ -724,58 +720,13 @@ def format_date(date_str):
     except:
         return date_str
 
-def calculate_expiry_date_display(days):
-    """根據天數計算到期日並顯示"""
-    if not days or days < 1:
-        return "請輸入有效天數（至少 1 天）"
-    
-    try:
-        days = int(days)
-        expiry_date = datetime.now() + timedelta(days=days)
-        formatted_date = expiry_date.strftime('%Y年%m月%d日 (%A)')
-        weekday_map = {
-            'Monday': '星期一',
-            'Tuesday': '星期二',
-            'Wednesday': '星期三',
-            'Thursday': '星期四',
-            'Friday': '星期五',
-            'Saturday': '星期六',
-            'Sunday': '星期日'
-        }
-        for en, zh in weekday_map.items():
-            formatted_date = formatted_date.replace(en, zh)
-        
-        return f"📅 **計算結果：{formatted_date}**"
-    except:
-        return "❌ 計算錯誤"
-
-def toggle_expiry_input(method):
-    """切換到期日輸入方式"""
-    if method == "選擇日期":
-        return gr.update(visible=True), gr.update(visible=False)
-    else:
-        return gr.update(visible=False), gr.update(visible=True)
-
-def add_deposit(username, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until):
+def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     """新增寄杯記錄"""
     if not username:
         return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    if not all([item, store, redeem_method]):
+    if not all([item, store, redeem_method, expiry_date]):
         return "❌ 請填寫所有欄位", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
-    
-    # 處理到期日
-    if expiry_method == "選擇日期":
-        final_expiry_date = expiry_date
-        if not final_expiry_date or final_expiry_date.strip() == "":
-            return "❌ 請選擇到期日", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
-    else:
-        if not days_until or days_until < 1:
-            return "❌ 請輸入有效的天數（至少 1 天）", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
-        try:
-            final_expiry_date = (datetime.now() + timedelta(days=int(days_until))).strftime('%Y-%m-%d')
-        except:
-            return "❌ 天數格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     try:
         quantity = int(quantity)
@@ -784,27 +735,20 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    # 驗證並清理日期格式
     try:
-        if isinstance(final_expiry_date, str):
-            # 移除可能的空白和特殊字符
-            final_expiry_date = final_expiry_date.strip()
-            
-            # 處理各種可能的日期格式
-            if 'T' in final_expiry_date:
-                final_expiry_date = final_expiry_date.split('T')[0]
-            if ' ' in final_expiry_date:
-                final_expiry_date = final_expiry_date.split(' ')[0]
-            
-            # 驗證日期格式
-            datetime.strptime(final_expiry_date, '%Y-%m-%d')
-        elif hasattr(final_expiry_date, 'strftime'):
-            final_expiry_date = final_expiry_date.strftime('%Y-%m-%d')
+        if isinstance(expiry_date, str):
+            if 'T' in expiry_date:
+                expiry_date = expiry_date.split('T')[0]
+            if ' ' in expiry_date:
+                expiry_date = expiry_date.split(' ')[0]
+            datetime.strptime(expiry_date, '%Y-%m-%d')
+        elif hasattr(expiry_date, 'strftime'):
+            expiry_date = expiry_date.strftime('%Y-%m-%d')
         else:
             return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except Exception as e:
-        print(f"日期處理錯誤: {e}, 收到的日期: {final_expiry_date}")
-        return f"❌ 日期格式錯誤（請確認已選擇日期）", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+        print(f"日期處理錯誤: {e}")
+        return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     new_deposit = {
@@ -813,7 +757,7 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
         'quantity': quantity,
         'store': store,
         'redeemMethod': redeem_method,
-        'expiryDate': final_expiry_date,
+        'expiryDate': expiry_date,
         'createdAt': datetime.now().isoformat()
     }
     deposits.append(new_deposit)
@@ -950,9 +894,11 @@ def get_deposits_display(username):
         
         redeem_info = REDEEM_LINKS.get(deposit['redeemMethod'], {
             'app': '#',
+            'web': '#',
             'name': deposit['redeemMethod']
         })
         app_link = redeem_info['app']
+        web_link = redeem_info['web']
         app_name = redeem_info['name']
         google_maps_link = f"https://www.google.com/maps/search/{deposit['store']}"
         
@@ -978,13 +924,17 @@ def get_deposits_display(username):
                    style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s; box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);">
                     📱 開啟 {app_name} App
                 </a>
+                <a href="{web_link}" target="_blank" 
+                   style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
+                    🌐 網頁版
+                </a>
                 <a href="{google_maps_link}" target="_blank" 
                    style="background: #2563eb; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
                     🗺️ 查看商店位置
                 </a>
             </div>
             <div style="padding: 12px; background: #f9fafb; border-radius: 8px; font-size: 12px; color: #6b7280;">
-                💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟對應的手機應用程式
+                💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟手機 App，如果沒有安裝，請點擊「網頁版」
             </div>
         </div>
         """
@@ -1119,65 +1069,27 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 新增：到期日輸入方式選擇
-            expiry_input_method = gr.Radio(
-                label="📅 到期日輸入方式",
-                choices=["選擇日期", "輸入天數"],
-                value="選擇日期",
-                interactive=True
-            )
-            
-         
-            # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
-            with gr.Column(visible=True) as date_picker_column:
-                expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    placeholder="請選擇日期",
-                    type="text",
-                    elem_id="expiry_date_picker",
-                    interactive=True
-                )
-                gr.HTML("""
+            # 使用 DateTime 元件作為日期選擇器
+            expiry_date_input = gr.HTML(
+                value="""
+                <div style="margin: 10px 0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                        📅 到期日
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expiry_date_input"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
+                        required
+                    />
+                </div>
                 <script>
-                    function setupDatePicker() {
-                        const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
-                        if (input) {
-                            input.type = 'date';
-                            input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;';
-                            input.addEventListener('click', function() {
-                                if (this.showPicker) {
-                                    this.showPicker();
-                                }
-                            });
-                        } else {
-                            setTimeout(setupDatePicker, 200);
-                        }
-                    }
-                    
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', setupDatePicker);
-                    } else {
-                        setupDatePicker();
-                    }
+                    document.getElementById('expiry_date_input').addEventListener('click', function() {
+                        this.showPicker();
+                    });
                 </script>
-                """)
-
-
-
-            
-            # 天數輸入（預設隱藏）
-            with gr.Column(visible=False) as days_input_column:
-                days_until_expiry = gr.Number(
-                    label="⏰ 幾天後到期",
-                    value=30,
-                    minimum=1,
-                    precision=0,
-                    info="輸入距離今天幾天後到期（例如：30 表示 30 天後到期）"
-                )
-                calculated_date_display = gr.Markdown(
-                    value="",
-                    visible=True
-                )
+                """
+)
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
@@ -1221,20 +1133,6 @@ with gr.Blocks(
     app.load(
         fn=on_load,
         outputs=[current_user, login_area, main_area, user_info, deposits_display, statistics_display, deposit_selector]
-    )
-    
-    # 切換輸入方式
-    expiry_input_method.change(
-        fn=toggle_expiry_input,
-        inputs=[expiry_input_method],
-        outputs=[date_picker_column, days_input_column]
-    )
-    
-    # 天數變更時顯示計算結果
-    days_until_expiry.change(
-        fn=calculate_expiry_date_display,
-        inputs=[days_until_expiry],
-        outputs=[calculated_date_display]
     )
     
     # 事件處理 - 註冊
@@ -1293,20 +1191,20 @@ with gr.Blocks(
     )
     
     # 事件處理 - 新增記錄
-    def add_and_refresh(user, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until):
+    def add_and_refresh(user, item, quantity, store, redeem_method, expiry_date):
         """新增記錄並刷新顯示"""
-        message, deposits, stats, choices = add_deposit(user, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until)
+        message, deposits, stats, choices = add_deposit(user, item, quantity, store, redeem_method, expiry_date)
         return message, deposits, stats, choices
     
     add_btn.click(
         fn=add_and_refresh,
-        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
     item_input.submit(
         fn=add_and_refresh,
-        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
