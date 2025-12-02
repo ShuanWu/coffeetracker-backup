@@ -48,6 +48,41 @@ REDEEM_LINKS = {
 
 # CSS 樣式 + JavaScript - 讓日期選擇器內嵌顯示
 CUSTOM_CSS = """
+/* ===== 只隱藏時間輸入框，保留日期輸入框 ===== */
+
+/* 只隱藏第一個輸入框（時間） */
+#expiry_date_picker .timebox input:first-child {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important;
+}
+
+/* 隱藏日曆按鈕 */
+#expiry_date_picker button.calendar {
+    display: none !important;
+}
+
+/* 確保日期輸入框（第二個）正常顯示 */
+#expiry_date_picker .timebox input:nth-child(2),
+#expiry_date_picker .timebox input[type="date"] {
+    display: block !important;
+    width: 100% !important;
+    flex: 1 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+}
+
+/* timebox 容器 */
+#expiry_date_picker .timebox {
+    display: flex !important;
+    width: 100% !important;
+}
+
+
 /* 隱藏 Hugging Face Space 頂部標題欄 */
 #huggingface-space-header {
     display: none !important;
@@ -1063,7 +1098,7 @@ with gr.Blocks(
                     interactive=True
                 )
 
-               # 保留 gr.DateTime 但隱藏時間輸入框
+               # 日期選擇器 - 保留 gr.DateTime 但隱藏時間輸入框
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
@@ -1077,53 +1112,97 @@ with gr.Blocks(
                         elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
+
+                gr.HTML(f"""
+                <style>
+                /* 內聯 CSS - 只隱藏第一個輸入框 */
+                #expiry_date_picker .timebox input:first-child {{
+                    display: none !important;
+                }}
+
+                #expiry_date_picker button.calendar {{
+                    display: none !important;
+                }}
+
+                #expiry_date_picker .timebox input[type="date"] {{
+                    display: block !important;
+                    width: 100% !important;
+                }}
+                </style>
+
+                <script>
+                (function() {{
+                    console.log('=== 開始處理日期選擇器 ===');
                     
-                    # 強制隱藏時間輸入框
-                    gr.HTML("""
-                    <script>
-                    (function() {
-                        function hideTimeInput() {
-                            const container = document.querySelector('#expiry_date_picker');
-                            if (container) {
-                                // 隱藏時間輸入框
-                                const timeInput = container.querySelector('.time, input.time');
-                                if (timeInput) {
-                                    timeInput.style.display = 'none';
-                                    timeInput.style.width = '0';
-                                    timeInput.style.height = '0';
-                                    timeInput.style.opacity = '0';
-                                    timeInput.style.visibility = 'hidden';
-                                    console.log('✅ 已隱藏時間輸入框');
-                                }
+                    function processDatePicker() {{
+                        const container = document.querySelector('#expiry_date_picker');
+                        
+                        if (container) {{
+                            const timebox = container.querySelector('.timebox');
+                            
+                            if (timebox) {{
+                                const inputs = timebox.querySelectorAll('input');
+                                console.log('找到輸入框數量:', inputs.length);
+                                
+                                inputs.forEach((input, index) => {{
+                                    console.log('輸入框', index, '- 類型:', input.type, '類別:', input.className);
+                                    
+                                    // 第一個輸入框（時間）- 隱藏
+                                    if (index === 0) {{
+                                        input.style.display = 'none';
+                                        input.style.width = '0';
+                                        input.style.height = '0';
+                                        input.style.opacity = '0';
+                                        input.style.visibility = 'hidden';
+                                        input.style.position = 'absolute';
+                                        console.log('✅ 已隱藏第', index, '個輸入框（時間）');
+                                    }}
+                                    // 第二個輸入框（日期）- 顯示
+                                    else if (index === 1 || input.type === 'date') {{
+                                        input.style.display = 'block';
+                                        input.style.width = '100%';
+                                        input.style.flex = '1';
+                                        input.style.visibility = 'visible';
+                                        input.style.opacity = '1';
+                                        input.style.position = 'relative';
+                                        input.min = '{today}';
+                                        console.log('✅ 已顯示第', index, '個輸入框（日期）');
+                                    }}
+                                }});
                                 
                                 // 隱藏日曆按鈕
-                                const calendarBtn = container.querySelector('button.calendar');
-                                if (calendarBtn) {
+                                const calendarBtn = timebox.querySelector('button.calendar');
+                                if (calendarBtn) {{
                                     calendarBtn.style.display = 'none';
                                     console.log('✅ 已隱藏日曆按鈕');
-                                }
+                                }}
                                 
-                                // 確保日期輸入框佔滿寬度
-                                const dateInput = container.querySelector('.datetime, input.datetime, input[type="date"]');
-                                if (dateInput) {
-                                    dateInput.style.width = '100%';
-                                    dateInput.style.flex = '1';
-                                    console.log('✅ 日期輸入框已調整');
-                                }
-                            }
-                        }
+                                // 調整容器
+                                timebox.style.display = 'flex';
+                                timebox.style.width = '100%';
+                                
+                                console.log('✅ 處理完成');
+                                return true;
+                            }}
+                        }}
                         
-                        setTimeout(hideTimeInput, 100);
-                        setTimeout(hideTimeInput, 500);
-                        setTimeout(hideTimeInput, 1000);
-                        
-                        new MutationObserver(hideTimeInput).observe(document.body, {
-                            childList: true,
-                            subtree: true
-                        });
-                    })();
-                    </script>
-                    """)
+                        return false;
+                    }}
+                    
+                    // 多次嘗試
+                    setTimeout(processDatePicker, 100);
+                    setTimeout(processDatePicker, 300);
+                    setTimeout(processDatePicker, 500);
+                    setTimeout(processDatePicker, 1000);
+                    
+                    // 監聽變化
+                    new MutationObserver(processDatePicker).observe(document.body, {{
+                        childList: true,
+                        subtree: true
+                    }});
+                }})();
+                </script>
+                """)
 
 
                 # 天數輸入（預設隱藏）
