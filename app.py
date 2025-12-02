@@ -1139,8 +1139,8 @@ with gr.Blocks(
                 )
                 gr.HTML("""
                 <script>
-                    setTimeout(function() {
-                        const input = document.querySelector('#expiry_date_picker input');
+                    function setupDatePicker() {
+                        const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
                         if (input) {
                             input.type = 'date';
                             input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;';
@@ -1149,10 +1149,19 @@ with gr.Blocks(
                                     this.showPicker();
                                 }
                             });
+                        } else {
+                            setTimeout(setupDatePicker, 200);
                         }
-                    }, 500);
+                    }
+                    
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', setupDatePicker);
+                    } else {
+                        setupDatePicker();
+                    }
                 </script>
                 """)
+
 
 
             
