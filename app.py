@@ -1161,8 +1161,9 @@ with gr.Blocks(
                             input.value = '{today}';
                             input.style.cursor = 'pointer';
                             
-                            // 禁用手動輸入
-                            input.readOnly = true;
+                            // 移除 readOnly，改用其他方式防止輸入
+                            input.setAttribute('onkeydown', 'return false;');
+                            input.setAttribute('onpaste', 'return false;');
                             
                             // 防止鍵盤輸入
                             input.addEventListener('keydown', function(e) {{
@@ -1176,12 +1177,38 @@ with gr.Blocks(
                                 return false;
                             }});
                             
-                            // 點擊時打開日期選擇器
-                            input.addEventListener('click', function() {{
-                                this.showPicker && this.showPicker();
+                            // 點擊時觸發日期選擇器（使用多種方法）
+                            input.addEventListener('click', function(e) {{
+                                // 方法1: showPicker (Chrome/Edge)
+                                if (this.showPicker) {{
+                                    try {{
+                                        this.showPicker();
+                                    }} catch(err) {{
+                                        console.log('showPicker failed:', err);
+                                    }}
+                                }}
+                                
+                                // 方法2: 觸發 focus
+                                this.focus();
+                                
+                                // 方法3: 模擬點擊
+                                setTimeout(() => {{
+                                    const evt = new MouseEvent('mousedown', {{
+                                        bubbles: true,
+                                        cancelable: true,
+                                        view: window
+                                    }});
+                                    this.dispatchEvent(evt);
+                                }}, 10);
                             }});
                             
                             // 防止選取文字
+                            input.addEventListener('selectstart', function(e) {{
+                                e.preventDefault();
+                                return false;
+                            }});
+                            
+                            // 防止雙擊選取
                             input.addEventListener('mousedown', function(e) {{
                                 if (e.detail > 1) {{
                                     e.preventDefault();
@@ -1193,12 +1220,14 @@ with gr.Blocks(
                 
                 // 初始化
                 setTimeout(initDatePicker, 300);
+                setTimeout(initDatePicker, 1000); // 再次嘗試
                 
                 // 監聽 DOM 變化
                 const observer = new MutationObserver(initDatePicker);
                 observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
+
 
 
 
