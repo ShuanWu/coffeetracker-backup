@@ -93,27 +93,18 @@ CUSTOM_CSS = """
     cursor: pointer !important;
 }
 
-.datepicker-readonly .calendar-icon {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-}
-
-/* 修正手機版日期選擇器彈出位置 */
-.datepicker-readonly .calendar-container,
-.datepicker-readonly [role="dialog"],
-.datepicker-readonly .flatpickr-calendar {
+/* 全域 Flatpickr 日期選擇器置中 */
+.flatpickr-calendar.open {
     position: fixed !important;
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
-    z-index: 9999 !important;
-    max-width: 90vw !important;
-    max-height: 90vh !important;
-    overflow: auto !important;
+    z-index: 99999 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* 日期選擇器背景遮罩 */
-.datepicker-readonly .flatpickr-calendar.open::before {
+body.flatpickr-open::before {
     content: '';
     position: fixed;
     top: 0;
@@ -121,39 +112,36 @@ CUSTOM_CSS = """
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: -1;
+    z-index: 99998 !important;
 }
 
 /* 手機版優化 */
 @media (max-width: 768px) {
-    .datepicker-readonly .flatpickr-calendar {
+    .flatpickr-calendar {
         width: 90vw !important;
         max-width: 350px !important;
     }
     
-    .datepicker-readonly .flatpickr-months,
-    .datepicker-readonly .flatpickr-weekdays,
-    .datepicker-readonly .flatpickr-days {
+    .flatpickr-months,
+    .flatpickr-weekdays,
+    .flatpickr-days {
         width: 100% !important;
     }
     
-    .datepicker-readonly .flatpickr-day {
+    .flatpickr-day {
         max-width: calc(100% / 7) !important;
-        height: 40px !important;
-        line-height: 40px !important;
+        height: 45px !important;
+        line-height: 45px !important;
+        font-size: 16px !important;
+    }
+    
+    .flatpickr-current-month {
+        font-size: 18px !important;
+        padding: 10px 0 !important;
     }
 }
-
-/* 確保日期選擇器在最上層 */
-.flatpickr-calendar {
-    z-index: 99999 !important;
-}
-
-/* 日期選擇器陰影 */
-.flatpickr-calendar.open {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
-}
 """
+
 
 # 確保資料目錄存在
 if not os.path.exists(DATA_DIR):
