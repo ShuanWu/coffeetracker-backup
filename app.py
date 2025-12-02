@@ -1145,30 +1145,64 @@ with gr.Blocks(
                 expiry_date_input = gr.Textbox(
                     label="",
                     visible=False,
-                    elem_id="expiry_date_hidden_sync"
+                    elem_id="expiry_date_hidden_sync",
+                    value=""
                 )
                 gr.HTML("""
                 <script>
-                    setTimeout(function() {
+                    function syncDateInput() {
                         const visibleDate = document.getElementById('expiry_date_input_visible');
                         const hiddenInput = document.querySelector('#expiry_date_hidden_sync input, #expiry_date_hidden_sync textarea');
                         
                         if (visibleDate && hiddenInput) {
-                            visibleDate.addEventListener('change', function() {
-                                hiddenInput.value = this.value;
-                                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('日期選擇器已連接');
+                            
+                            // 多種事件監聽確保同步
+                            ['change', 'input', 'blur'].forEach(eventType => {
+                                visibleDate.addEventListener(eventType, function() {
+                                    if (this.value) {
+                                        hiddenInput.value = this.value;
+                                        
+                                        // 觸發多個事件確保 Gradio 接收
+                                        ['input', 'change', 'blur'].forEach(evt => {
+                                            const event = new Event(evt, { bubbles: true, cancelable: true });
+                                            hiddenInput.dispatchEvent(event);
+                                        });
+                                        
+                                        console.log('日期已同步:', this.value);
+                                    }
+                                });
                             });
                             
+                            // 點擊時自動打開日期選擇器
                             visibleDate.addEventListener('click', function() {
                                 if (this.showPicker) {
                                     this.showPicker();
                                 }
                             });
+                            
+                            // 定期檢查並同步（備用方案）
+                            setInterval(function() {
+                                if (visibleDate.value && hiddenInput.value !== visibleDate.value) {
+                                    hiddenInput.value = visibleDate.value;
+                                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                }
+                            }, 500);
+                            
+                        } else {
+                            console.log('等待元素載入...');
+                            setTimeout(syncDateInput, 200);
                         }
-                    }, 500);
+                    }
+                    
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', syncDateInput);
+                    } else {
+                        syncDateInput();
+                    }
                 </script>
                 """)
+
 
             
             # 天數輸入（預設隱藏）
