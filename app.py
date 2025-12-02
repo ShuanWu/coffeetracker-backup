@@ -93,57 +93,137 @@ CUSTOM_CSS = """
     cursor: pointer !important;
 }
 
-/* 日期選擇器下拉顯示在輸入框下方 */
-.flatpickr-calendar {
-    position: absolute !important;
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    transform: none !important;
-    margin-top: 5px !important;
-    z-index: 9999 !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-    width: 100% !important;
-    max-width: 100% !important;
-}
-
 /* 確保日期選擇器容器有相對定位 */
 .datepicker-readonly {
     position: relative !important;
 }
 
-/* 日期選擇器內部元素寬度調整 */
-.flatpickr-calendar .flatpickr-months,
-.flatpickr-calendar .flatpickr-weekdays,
-.flatpickr-calendar .flatpickr-days {
-    width: 100% !important;
+/* 日期選擇器下拉顯示在輸入框下方 */
+.flatpickr-calendar {
+    position: absolute !important;
+    margin-top: 8px !important;
+    z-index: 9999 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 12px !important;
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
 }
 
-.flatpickr-calendar .flatpickr-innerContainer {
-    width: 100% !important;
+/* 日期選擇器內部元素 */
+.flatpickr-calendar .flatpickr-months {
+    background: #f97316 !important;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 12px !important;
 }
 
-/* 日期按鈕大小 */
-.flatpickr-calendar .flatpickr-day {
-    max-width: calc(100% / 7) !important;
-    height: 45px !important;
-    line-height: 45px !important;
-    font-size: 16px !important;
-}
-
-/* 月份標題 */
 .flatpickr-calendar .flatpickr-current-month {
+    color: white !important;
     font-size: 18px !important;
-    padding: 10px 0 !important;
+    font-weight: 600 !important;
+}
+
+.flatpickr-calendar .flatpickr-prev-month,
+.flatpickr-calendar .flatpickr-next-month {
+    fill: white !important;
+}
+
+.flatpickr-calendar .flatpickr-prev-month:hover,
+.flatpickr-calendar .flatpickr-next-month:hover {
+    fill: #fef3c7 !important;
 }
 
 /* 星期標題 */
 .flatpickr-calendar .flatpickr-weekday {
+    color: #6b7280 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+/* 日期按鈕 */
+.flatpickr-calendar .flatpickr-day {
+    color: #1f2937 !important;
+    font-size: 15px !important;
+    border-radius: 8px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+}
+
+.flatpickr-calendar .flatpickr-day:hover {
+    background: #fef3c7 !important;
+    border-color: #fef3c7 !important;
+}
+
+.flatpickr-calendar .flatpickr-day.selected {
+    background: #f97316 !important;
+    border-color: #f97316 !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.flatpickr-calendar .flatpickr-day.today {
+    border-color: #f97316 !important;
+    color: #f97316 !important;
+    font-weight: 600 !important;
+}
+
+.flatpickr-calendar .flatpickr-day.today:hover {
+    background: #fff7ed !important;
+    border-color: #f97316 !important;
+}
+
+/* 其他月份的日期 */
+.flatpickr-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar .flatpickr-day.nextMonthDay {
+    color: #d1d5db !important;
+}
+
+/* 清除和今天按鈕 */
+.flatpickr-calendar .flatpickr-clear,
+.flatpickr-calendar .flatpickr-today {
+    color: #f97316 !important;
+    font-weight: 500 !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
     font-size: 14px !important;
 }
+
+.flatpickr-calendar .flatpickr-clear:hover,
+.flatpickr-calendar .flatpickr-today:hover {
+    background: #fff7ed !important;
+}
+
+/* 月份下拉選單 */
+.flatpickr-calendar .flatpickr-monthDropdown-months {
+    background: white !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    padding: 4px !important;
+    font-size: 16px !important;
+}
+
+/* 年份輸入 */
+.flatpickr-calendar .numInputWrapper input {
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+/* 手機版優化 */
+@media (max-width: 768px) {
+    .flatpickr-calendar {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+    
+    .flatpickr-calendar .flatpickr-day {
+        height: 45px !important;
+        line-height: 45px !important;
+        font-size: 16px !important;
+    }
+}
 """
-
-
 
 # 確保資料目錄存在
 if not os.path.exists(DATA_DIR):
