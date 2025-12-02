@@ -193,23 +193,44 @@ input[type="datetime-local"] {
 
 /* ===== 日期選擇器彈出日曆樣式（原生瀏覽器日曆）===== */
 
-/* Chrome/Edge 日曆樣式 */
-input[type="date"]::-webkit-datetime-edit,
-input[type="datetime-local"]::-webkit-datetime-edit {
-    padding: 0 !important;
+# /* Chrome/Edge 日曆樣式 */
+# input[type="date"]::-webkit-datetime-edit,
+# input[type="datetime-local"]::-webkit-datetime-edit {
+#     padding: 0 !important;
+# }
+
+# input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+# input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+#     padding: 0 !important;
+# }
+
+# /* 確保日期選擇器在所有瀏覽器中都能正常顯示 */
+# input[type="date"],
+# input[type="datetime-local"] {
+#     position: relative !important;
+#     z-index: 1 !important;
+# }
+
+
+/* ===== 原生日曆彈窗優化（有限支援）===== */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    z-index: 999 !important;
 }
 
-input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-    padding: 0 !important;
+/* 日期輸入框獲得焦點時的效果 */
+input[type="date"]:focus,
+input[type="datetime-local"]:focus {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* 確保日期選擇器在所有瀏覽器中都能正常顯示 */
-input[type="date"],
-input[type="datetime-local"] {
-    position: relative !important;
-    z-index: 1 !important;
+/* 日期輸入框懸停效果 */
+input[type="date"]:hover,
+input[type="datetime-local"]:hover {
+    border-color: #fb923c !important;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.1) !important;
 }
+
 
 
 /* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
