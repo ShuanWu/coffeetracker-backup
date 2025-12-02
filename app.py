@@ -756,18 +756,16 @@ with gr.Blocks(
                 )
             
             with gr.Row():
-                store_input = gr.Dropdown(
+                store_input = gr.Radio(
                     label="🏪 商店名稱", 
                     choices=STORE_OPTIONS,
-                    interactive=True,
-                    allow_custom_value=False,  # 禁止自訂輸入
+                    value=STORE_OPTIONS[0],  # 預設選擇第一個
                     scale=1
                 )
-                redeem_method_input = gr.Dropdown(
+                redeem_method_input = gr.Radio(
                     label="📦 兌換途徑", 
                     choices=REDEEM_METHODS,
-                    interactive=True,
-                    allow_custom_value=False,  # 禁止自訂輸入
+                    value=REDEEM_METHODS[0],  # 預設選擇第一個
                     scale=1
                 )
             
@@ -792,11 +790,10 @@ with gr.Blocks(
         with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
             gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
             action_status = gr.Markdown()
-            deposit_selector = gr.Dropdown(
+            deposit_selector = gr.Radio(
                 label="📋 選擇寄杯記錄",
                 choices=[],
-                interactive=True,
-                allow_custom_value=False  # 禁止自訂輸入
+                value=None
             )
             
             with gr.Row():
