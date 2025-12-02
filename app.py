@@ -1186,78 +1186,55 @@ with gr.Blocks(
                     elem_id="expiry_date_hidden"
                 )
                 
-                # 日期選擇器 - 簡化版本
+            # 日期選擇器 - 使用 HTML + 按鈕觸發時同步
             with gr.Column(visible=True) as date_picker_column:
-                expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    placeholder="YYYY-MM-DD",
-                    value=datetime.now().strftime('%Y-%m-%d'),
-                    interactive=True,
-                    elem_id="expiry_date_textbox"
-                )
-                
                 gr.HTML("""
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                        📅 到期日
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expiry_date_picker_main"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
+                    />
+                </div>
                 <script>
                 (function() {
-                    console.log('🚀 開始初始化日期選擇器...');
-                    
-                    function convertToDatePicker() {
-                        // 尋找輸入框
-                        const textbox = document.querySelector('#expiry_date_textbox input') || 
-                                       document.querySelector('#expiry_date_textbox textarea');
-                        
-                        if (!textbox) {
-                            console.log('⏳ 尋找輸入框中...');
-                            setTimeout(convertToDatePicker, 100);
+                    function initDatePicker() {
+                        const picker = document.getElementById('expiry_date_picker_main');
+                        if (!picker) {
+                            setTimeout(initDatePicker, 100);
                             return;
                         }
                         
-                        if (textbox.hasAttribute('data-converted')) {
-                            console.log('✅ 已經轉換過了');
+                        if (picker.hasAttribute('data-initialized')) {
                             return;
                         }
+                        picker.setAttribute('data-initialized', 'true');
                         
-                        console.log('🔧 找到輸入框，開始轉換為日期選擇器');
-                        textbox.setAttribute('data-converted', 'true');
-                        
-                        // 轉換為日期選擇器
-                        textbox.type = 'date';
-                        textbox.style.cursor = 'pointer';
-                        
-                        // 設置最小日期為今天
+                        // 設置今天為最小日期
                         const today = new Date().toISOString().split('T')[0];
-                        textbox.min = today;
+                        picker.min = today;
+                        picker.value = today;
                         
-                        // 如果沒有值，設置為今天
-                        if (!textbox.value) {
-                            textbox.value = today;
-                            console.log('📅 設置預設日期:', today);
-                        }
-                        
-                        // 監聽變更
-                        textbox.addEventListener('change', function() {
-                            console.log('📅 日期已變更為:', this.value);
-                        });
-                        
-                        console.log('✅ 日期選擇器轉換完成！當前值:', textbox.value);
+                        console.log('✅ 日期選擇器已初始化，預設值:', today);
                     }
                     
-                    // 多種觸發方式
                     if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', convertToDatePicker);
+                        document.addEventListener('DOMContentLoaded', initDatePicker);
                     } else {
-                        convertToDatePicker();
+                        initDatePicker();
                     }
-                    
-                    // 監聽 DOM 變化
-                    const observer = new MutationObserver(convertToDatePicker);
-                    observer.observe(document.body, { childList: true, subtree: true });
-                    
-                    // 定期檢查
-                    setInterval(convertToDatePicker, 1000);
                 })();
                 </script>
                 """)
+                
+                expiry_date_input = gr.Textbox(
+                    label="",
+                    visible=False,
+                    elem_id="expiry_date_hidden_field"
+                )
 
 
             
