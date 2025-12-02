@@ -1132,67 +1132,110 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器（使用 Gradio 原生組件）
+            # 日期選擇器（混合 HTML + Gradio 隱藏輸入）
             with gr.Column(visible=True) as date_picker_column:
-                expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    placeholder="點擊選擇日期",
-                    type="text",
-                    elem_classes=["datepicker-readonly"],
-                    interactive=True
-                )
-                # 添加 JavaScript 來將普通文字框轉換為日期選擇器
                 gr.HTML("""
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                        📅 到期日
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expiry_date_picker_visible"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
+                    />
+                </div>
                 <script>
-                    function initDatePicker() {
-                        // 找到日期輸入框
-                        const dateInputs = document.querySelectorAll('.datepicker-readonly input, .datepicker-readonly textarea');
-                        
-                        dateInputs.forEach(function(input) {
-                            if (input.hasAttribute('data-date-initialized')) {
+                    (function() {
+                        function initVisibleDatePicker() {
+                            const visiblePicker = document.getElementById('expiry_date_picker_visible');
+                            if (!visiblePicker) {
+                                setTimeout(initVisibleDatePicker, 100);
                                 return;
                             }
-                            input.setAttribute('data-date-initialized', 'true');
                             
-                            // 設置 type 為 date
-                            input.setAttribute('type', 'date');
-                            input.style.cursor = 'pointer';
+                            if (visiblePicker.hasAttribute('data-initialized')) {
+                                return;
+                            }
+                            visiblePicker.setAttribute('data-initialized', 'true');
                             
                             // 設置最小日期為今天
                             const today = new Date().toISOString().split('T')[0];
-                            input.setAttribute('min', today);
+                            visiblePicker.setAttribute('min', today);
                             
-                            // 如果沒有值，設置預設值為今天
-                            if (!input.value) {
-                                input.value = today;
-                                // 觸發 change 事件
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            // 設置預設值為今天
+                            if (!visiblePicker.value) {
+                                visiblePicker.value = today;
                             }
                             
-                            console.log('✅ 日期選擇器初始化完成，預設值:', input.value);
-                        });
-                    }
-                    
-                    // 頁面載入時初始化
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', initDatePicker);
-                    } else {
-                        initDatePicker();
-                    }
-                    
-                    // 監聽 DOM 變化
-                    const observer = new MutationObserver(function(mutations) {
-                        initDatePicker();
-                    });
-                    
-                    observer.observe(document.body, {
-                        childList: true,
-                        subtree: true
-                    });
-                    
-                    // 定期檢查（備用方案）
-                    setInterval(initDatePicker, 1000);
+                            console.log('✅ 可見日期選擇器初始化完成，預設值:', visiblePicker.value);
+                        }
+                        
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', initVisibleDatePicker);
+                        } else {
+                            initVisibleDatePicker();
+                        }
+                    })();
+                </script>
+                """)
+                
+                expiry_date_input = gr.Textbox(
+                    label="",
+                    visible=False,
+                    elem_id="expiry_date_hidden"
+                )
+                
+                # 同步腳本
+                gr.HTML("""
+                <script>
+                    (function() {
+                        function syncDateToGradio() {
+                            const visiblePicker = document.getElementById('expiry_date_picker_visible');
+                            const hiddenInput = document.querySelector('#expiry_date_hidden input, #expiry_date_hidden textarea');
+                            
+                            if (!visiblePicker || !hiddenInput) {
+                                setTimeout(syncDateToGradio, 100);
+                                return;
+                            }
+                            
+                            if (visiblePicker.hasAttribute('data-sync-initialized')) {
+                                return;
+                            }
+                            visiblePicker.setAttribute('data-sync-initialized', 'true');
+                            
+                            // 初始同步
+                            if (visiblePicker.value) {
+                                hiddenInput.value = visiblePicker.value;
+                                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            
+                            // 監聽變更
+                            visiblePicker.addEventListener('change', function() {
+                                console.log('📅 日期已變更:', this.value);
+                                hiddenInput.value = this.value;
+                                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            });
+                            
+                            // 定期同步（確保不遺失）
+                            setInterval(function() {
+                                if (visiblePicker.value && hiddenInput.value !== visiblePicker.value) {
+                                    console.log('🔄 自動同步日期:', visiblePicker.value);
+                                    hiddenInput.value = visiblePicker.value;
+                                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                }
+                            }, 500);
+                            
+                            console.log('✅ 日期同步機制已啟動');
+                        }
+                        
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', syncDateToGradio);
+                        } else {
+                            syncDateToGradio();
+                        }
+                    })();
                 </script>
                 """)
 
