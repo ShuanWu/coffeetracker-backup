@@ -53,41 +53,6 @@ if not os.path.exists(DATA_DIR):
 # Hugging Face API
 api = HfApi()
 
-# JavaScript 代碼用於 localStorage
-JS_CODE = """
-<script>
-// 儲存 Session Token 到 localStorage
-function saveSession(token) {
-    if (token) {
-        localStorage.setItem('coffee_session', token);
-    }
-}
-
-// 從 localStorage 讀取 Session Token
-function getSession() {
-    return localStorage.getItem('coffee_session') || '';
-}
-
-// 刪除 Session Token
-function clearSession() {
-    localStorage.removeItem('coffee_session');
-}
-
-// 頁面載入時自動填入 Session Token
-window.addEventListener('load', function() {
-    const sessionToken = getSession();
-    if (sessionToken) {
-        // 觸發自動登入
-        const sessionInput = document.querySelector('input[data-testid="session-token-input"]');
-        if (sessionInput) {
-            sessionInput.value = sessionToken;
-            sessionInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
-});
-</script>
-"""
-
 def download_from_hf(filename):
     """從 Hugging Face Space 下載檔案"""
     try:
@@ -193,6 +158,12 @@ def create_session(username):
     """創建 Session Token"""
     token = secrets.token_urlsafe(32)
     sessions = load_sessions()
+    
+    # 清理過期的 sessions
+    now = datetime.now()
+    sessions = {k: v for k, v in sessions.items() 
+                if datetime.fromisoformat(v['expires_at']) > now}
+    
     sessions[token] = {
         'username': username,
         'created_at': datetime.now().isoformat(),
@@ -203,7 +174,7 @@ def create_session(username):
 
 def validate_session(token):
     """驗證 Session Token"""
-    if not token or token == "":
+    if not token or token == "" or token == "None":
         return None
     
     sessions = load_sessions()
@@ -211,18 +182,21 @@ def validate_session(token):
         return None
     
     session = sessions[token]
-    expires_at = datetime.fromisoformat(session['expires_at'])
-    
-    if datetime.now() > expires_at:
-        del sessions[token]
-        save_sessions(sessions)
+    try:
+        expires_at = datetime.fromisoformat(session['expires_at'])
+        
+        if datetime.now() > expires_at:
+            del sessions[token]
+            save_sessions(sessions)
+            return None
+        
+        return session['username']
+    except:
         return None
-    
-    return session['username']
 
 def delete_session(token):
     """刪除 Session"""
-    if not token:
+    if not token or token == "" or token == "None":
         return
     
     sessions = load_sessions()
@@ -329,15 +303,9 @@ def login_user(username, password, remember_me):
     session_token = ""
     if remember_me:
         session_token = create_session(username)
+        print(f"✅ 創建 Session: {session_token[:10]}... for {username}")
     
     return f"✅ 歡迎回來，{username}！", gr.update(visible=False), gr.update(visible=True), username, session_token
-
-def auto_login_check(token):
-    """檢查自動登入"""
-    username = validate_session(token)
-    if username:
-        return username, gr.update(visible=False), gr.update(visible=True)
-    return None, gr.update(visible=True), gr.update(visible=False)
 
 def logout_user(token):
     """使用者登出"""
@@ -627,7 +595,6 @@ def refresh_display(username):
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
-    head=JS_CODE
 ) as app:
     
     current_user = gr.State(None)
@@ -642,20 +609,26 @@ with gr.Blocks(
         </div>
     """)
     
-    # 隱藏的 Session Token 輸入框（用於 JavaScript 互動）
-    session_token_input = gr.Textbox(
-        elem_id="session-token-input",
-        visible=False,
-        elem_classes=["session-token-input"]
-    )
-    
     with gr.Column(visible=True) as login_area:
         with gr.Tabs():
             with gr.Tab("🔐 登入"):
                 login_status = gr.Markdown()
+                
+                # Session Token 輸入框（用於自動登入）
+                with gr.Accordion("🔑 使用 Session Token 登入", open=False):
+                    gr.Markdown("如果您之前勾選了「記住我」，請在下方貼上您的 Session Token")
+                    session_token_login = gr.Textbox(
+                        label="Session Token",
+                        placeholder="貼上您的 Session Token",
+                        type="password"
+                    )
+                    session_login_btn = gr.Button("使用 Token 登入", variant="secondary")
+                
+                gr.Markdown("---")
+                
                 login_username = gr.Textbox(label="使用者名稱", placeholder="請輸入使用者名稱")
                 login_password = gr.Textbox(label="密碼", type="password", placeholder="請輸入密碼")
-                remember_me_checkbox = gr.Checkbox(label="記住我（30天內自動登入）", value=True)
+                remember_me_checkbox = gr.Checkbox(label="記住我（30天內有效）", value=True)
                 login_btn = gr.Button("登入", variant="primary", size="lg")
             
             with gr.Tab("📝 註冊"):
@@ -669,6 +642,15 @@ with gr.Blocks(
         with gr.Row():
             user_info = gr.Markdown()
             logout_btn = gr.Button("🚪 登出", size="sm")
+        
+        # 顯示 Session Token（如果有）
+        with gr.Accordion("🔑 您的 Session Token（請妥善保管）", open=False):
+            session_token_display = gr.Textbox(
+                label="Session Token",
+                value="",
+                interactive=False,
+                info="複製此 Token，下次可以直接使用 Token 登入，無需輸入帳號密碼"
+            )
         
         gr.Markdown("---")
         
@@ -741,25 +723,6 @@ with gr.Blocks(
         deposits_display = gr.HTML(value=get_deposits_display(None))
         statistics_display = gr.HTML(value=get_statistics(None))
     
-    # 頁面載入時自動登入
-    def on_load(token):
-        """頁面載入時檢查 Session"""
-        user, login_vis, main_vis = auto_login_check(token)
-        if user:
-            user_display = f"👤 使用者：**{user}**"
-            deposits = get_deposits_display(user)
-            stats = get_statistics(user)
-            choices = get_deposit_choices(user)
-            return user, login_vis, main_vis, user_display, deposits, stats, choices, token
-        return None, login_vis, main_vis, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), ""
-    
-    # 監聽隱藏的 session token 輸入框
-    session_token_input.change(
-        fn=on_load,
-        inputs=[session_token_input],
-        outputs=[current_user, login_area, main_area, user_info, deposits_display, statistics_display, deposit_selector, session_token_state]
-    )
-    
     # 事件處理 - 註冊
     register_btn.click(
         fn=register_user,
@@ -767,37 +730,52 @@ with gr.Blocks(
         outputs=[register_status, login_area, main_area]
     )
     
+    # 事件處理 - 使用 Token 登入
+    def token_login(token):
+        """使用 Token 登入"""
+        username = validate_session(token)
+        if username:
+            user_display = f"👤 使用者：**{username}**"
+            deposits = get_deposits_display(username)
+            stats = get_statistics(username)
+            choices = get_deposit_choices(username)
+            return "✅ Token 登入成功！", gr.update(visible=False), gr.update(visible=True), username, user_display, deposits, stats, choices, token, token
+        else:
+            return "❌ Token 無效或已過期", gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), "", ""
+    
+    session_login_btn.click(
+        fn=token_login,
+        inputs=[session_token_login],
+        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token_state, session_token_display]
+    )
+    
     # 事件處理 - 登入
     def login_and_update(username, password, remember_me):
         """登入並更新所有相關狀態"""
         message, login_vis, main_vis, user, token = login_user(username, password, remember_me)
         
-        js_save = f"<script>saveSession('{token}');</script>" if token else ""
-        
         if user:
-            user_display = f"👤 使用者：**{user}**"
+            user_display = f"👤 使用者：**{username}**"
             deposits = get_deposits_display(user)
             stats = get_statistics(user)
             choices = get_deposit_choices(user)
-            return message + js_save, login_vis, main_vis, user, user_display, deposits, stats, choices, token
+            
+            if token:
+                message += f"\n\n✅ **已創建 Session Token，請妥善保管**"
+            
+            return message, login_vis, main_vis, user, user_display, deposits, stats, choices, token, token
         else:
-            return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), ""
+            return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), "", ""
     
     login_btn.click(
         fn=login_and_update,
         inputs=[login_username, login_password, remember_me_checkbox],
-        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token_state]
+        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token_state, session_token_display]
     )
     
     # 事件處理 - 登出
-    def logout_and_clear(token):
-        """登出並清除 Session"""
-        result = logout_user(token)
-        js_clear = "<script>clearSession();</script>"
-        return result[0], result[1], result[2], result[3] + js_clear, result[4], result[5], result[6], result[7]
-    
     logout_btn.click(
-        fn=logout_and_clear,
+        fn=logout_user,
         inputs=[session_token_state],
         outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token_state]
     )
