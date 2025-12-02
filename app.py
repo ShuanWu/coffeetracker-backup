@@ -1152,83 +1152,81 @@ with gr.Blocks(
                 # 將輸入框轉換為日期選擇器
                 gr.HTML(f"""
                 <script>
-                function initDatePicker() {{
-                    const dateInputs = document.querySelectorAll('.datepicker-readonly input');
-                    dateInputs.forEach(input => {{
-                        if (input.type !== 'date' || !input.dataset.initialized) {{
-                            input.type = 'date';
-                            input.min = '{today}';
-                            if (!input.value) {{
-                                input.value = '{today}';
-                            }}
-                            input.style.cursor = 'pointer';
-                            input.dataset.initialized = 'true';
+                (function() {{
+                    let initialized = false;
+                    
+                    function initDatePicker() {{
+                        const containers = document.querySelectorAll('.datepicker-readonly');
+                        
+                        containers.forEach(container => {{
+                            const input = container.querySelector('input');
                             
-                            // 監聽日期變更事件（使用多種事件確保觸發）
-                            ['change', 'input', 'blur'].forEach(eventType => {{
-                                input.addEventListener(eventType, function(e) {{
-                                    if (eventType === 'change' || eventType === 'blur') {{
-                                        console.log('Date event:', eventType, this.value);
-                                        
-                                        // 強制更新 Gradio
-                                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                                            window.HTMLInputElement.prototype, 
-                                            'value'
-                                        ).set;
-                                        nativeInputValueSetter.call(this, this.value);
-                                        
-                                        // 觸發所有可能的事件
-                                        ['input', 'change', 'blur'].forEach(evt => {{
-                                            const event = new Event(evt, {{ 
-                                                bubbles: true, 
-                                                cancelable: true 
-                                            }});
-                                            this.dispatchEvent(event);
-                                        }});
+                            if (input && !input.dataset.dateInit) {{
+                                // 標記已初始化
+                                input.dataset.dateInit = 'true';
+                                
+                                // 設置為日期類型
+                                input.type = 'date';
+                                input.min = '{today}';
+                                input.value = '{today}';
+                                input.style.cursor = 'pointer';
+                                
+                                console.log('Date picker initialized with value:', input.value);
+                                
+                                // 監聽日期變更
+                                input.addEventListener('change', function() {{
+                                    console.log('Date changed to:', this.value);
+                                    
+                                    // 觸發 input 事件讓 Gradio 知道值已改變
+                                    const event = new Event('input', {{ bubbles: true }});
+                                    this.dispatchEvent(event);
+                                }});
+                                
+                                // 防止鍵盤輸入（允許 Tab 和 Escape）
+                                input.addEventListener('keydown', function(e) {{
+                                    if (e.key !== 'Tab' && e.key !== 'Escape') {{
+                                        e.preventDefault();
                                     }}
                                 }});
-                            }});
-                            
-                            // 防止鍵盤輸入
-                            input.addEventListener('keydown', function(e) {{
-                                if (e.key === 'Tab' || e.key === 'Escape') {{
-                                    return true;
-                                }}
-                                e.preventDefault();
-                                return false;
-                            }});
-                            
-                            // 防止貼上
-                            input.addEventListener('paste', function(e) {{
-                                e.preventDefault();
-                                return false;
-                            }});
-                            
-                            // 防止拖放
-                            input.addEventListener('drop', function(e) {{
-                                e.preventDefault();
-                                return false;
-                            }});
-                            
-                            // 防止選取文字
-                            input.addEventListener('selectstart', function(e) {{
-                                e.preventDefault();
-                                return false;
-                            }});
-                        }}
+                                
+                                // 防止貼上
+                                input.addEventListener('paste', function(e) {{
+                                    e.preventDefault();
+                                }});
+                                
+                                // 防止文字選取
+                                input.addEventListener('selectstart', function(e) {{
+                                    e.preventDefault();
+                                }});
+                            }}
+                        }});
+                    }}
+                    
+                    // 初始化
+                    if (document.readyState === 'loading') {{
+                        document.addEventListener('DOMContentLoaded', initDatePicker);
+                    }} else {{
+                        initDatePicker();
+                    }}
+                    
+                    // 延遲初始化（確保 Gradio 完全載入）
+                    setTimeout(initDatePicker, 300);
+                    setTimeout(initDatePicker, 800);
+                    setTimeout(initDatePicker, 1500);
+                    
+                    // 監聽 DOM 變化
+                    const observer = new MutationObserver(function(mutations) {{
+                        initDatePicker();
                     }});
-                }}
-                
-                // 多次初始化
-                setTimeout(initDatePicker, 100);
-                setTimeout(initDatePicker, 500);
-                setTimeout(initDatePicker, 1000);
-                
-                // 監聽 DOM 變化
-                const observer = new MutationObserver(initDatePicker);
-                observer.observe(document.body, {{ childList: true, subtree: true }});
+                    
+                    observer.observe(document.body, {{
+                        childList: true,
+                        subtree: true
+                    }});
+                }})();
                 </script>
                 """)
+
 
 
             
