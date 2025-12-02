@@ -47,7 +47,7 @@ REDEEM_LINKS = {
     }
 }
 
-# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
+# CSS 樣式 - 禁用下拉選單和日期選擇器輸入，並修正手機版顯示
 CUSTOM_CSS = """
 /* 隱藏下拉選單的游標和禁用輸入 */
 .dropdown-readonly input {
@@ -96,6 +96,62 @@ CUSTOM_CSS = """
 .datepicker-readonly .calendar-icon {
     pointer-events: auto !important;
     cursor: pointer !important;
+}
+
+/* 修正手機版日期選擇器彈出位置 */
+.datepicker-readonly .calendar-container,
+.datepicker-readonly [role="dialog"],
+.datepicker-readonly .flatpickr-calendar {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999 !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    overflow: auto !important;
+}
+
+/* 日期選擇器背景遮罩 */
+.datepicker-readonly .flatpickr-calendar.open::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+}
+
+/* 手機版優化 */
+@media (max-width: 768px) {
+    .datepicker-readonly .flatpickr-calendar {
+        width: 90vw !important;
+        max-width: 350px !important;
+    }
+    
+    .datepicker-readonly .flatpickr-months,
+    .datepicker-readonly .flatpickr-weekdays,
+    .datepicker-readonly .flatpickr-days {
+        width: 100% !important;
+    }
+    
+    .datepicker-readonly .flatpickr-day {
+        max-width: calc(100% / 7) !important;
+        height: 40px !important;
+        line-height: 40px !important;
+    }
+}
+
+/* 確保日期選擇器在最上層 */
+.flatpickr-calendar {
+    z-index: 99999 !important;
+}
+
+/* 日期選擇器陰影 */
+.flatpickr-calendar.open {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
 }
 """
 
