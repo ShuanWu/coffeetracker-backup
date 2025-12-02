@@ -16,7 +16,7 @@ SESSIONS_FILE = 'sessions.json'
 
 # 商店和兌換途徑選項
 STORE_OPTIONS = ['7-11', '全家', '星巴克']
-REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
+REDEEM_METHODS = ['7-11', '全家', 'Line禮物', '全家酷碰劵', '遠傳', '星巴克']
 
 # 兌換連結對應
 REDEEM_LINKS = {
