@@ -4,12 +4,14 @@ from datetime import datetime, timedelta
 import os
 import hashlib
 from huggingface_hub import HfApi, hf_hub_download, upload_file
+import secrets
 
 # Hugging Face 設定
 HF_TOKEN = os.getenv("HF_TOKEN")
 HF_REPO = os.getenv("SPACE_ID")
 USERS_FILE = 'users.json'
 DATA_DIR = 'user_data'
+SESSIONS_FILE = 'sessions.json'
 
 # 商店和兌換途徑選項
 STORE_OPTIONS = ['7-11', '全家', '星巴克']
@@ -126,6 +128,80 @@ def save_users(users):
         print(f"儲存使用者資料錯誤: {e}")
         return False
 
+def load_sessions():
+    """載入 Session 資料"""
+    hf_file = download_from_hf(SESSIONS_FILE)
+    if hf_file and os.path.exists(hf_file):
+        try:
+            with open(hf_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                with open(SESSIONS_FILE, 'w', encoding='utf-8') as local_f:
+                    json.dump(data, local_f, ensure_ascii=False, indent=2)
+                return data
+        except:
+            pass
+    
+    if os.path.exists(SESSIONS_FILE):
+        try:
+            with open(SESSIONS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    
+    return {}
+
+def save_sessions(sessions):
+    """儲存 Session 資料"""
+    try:
+        with open(SESSIONS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(sessions, f, ensure_ascii=False, indent=2)
+        upload_to_hf(SESSIONS_FILE)
+        return True
+    except:
+        return False
+
+def create_session(username):
+    """創建 Session Token"""
+    token = secrets.token_urlsafe(32)
+    sessions = load_sessions()
+    sessions[token] = {
+        'username': username,
+        'created_at': datetime.now().isoformat(),
+        'expires_at': (datetime.now() + timedelta(days=30)).isoformat()
+    }
+    save_sessions(sessions)
+    return token
+
+def validate_session(token):
+    """驗證 Session Token"""
+    if not token:
+        return None
+    
+    sessions = load_sessions()
+    if token not in sessions:
+        return None
+    
+    session = sessions[token]
+    expires_at = datetime.fromisoformat(session['expires_at'])
+    
+    if datetime.now() > expires_at:
+        # Session 過期，刪除
+        del sessions[token]
+        save_sessions(sessions)
+        return None
+    
+    return session['username']
+
+def delete_session(token):
+    """刪除 Session"""
+    if not token:
+        return
+    
+    sessions = load_sessions()
+    if token in sessions:
+        del sessions[token]
+        save_sessions(sessions)
+
 def get_user_data_file(username):
     """取得使用者資料檔案路徑"""
     if not username:
@@ -184,21 +260,21 @@ def save_deposits(username, deposits):
 def register_user(username, password, confirm_password):
     """註冊新使用者"""
     if not username or not password:
-        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False), None
     
     if len(username) < 3:
-        return "❌ 使用者名稱至少需要 3 個字元", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 使用者名稱至少需要 3 個字元", gr.update(visible=True), gr.update(visible=False), None
     
     if len(password) < 6:
-        return "❌ 密碼至少需要 6 個字元", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 密碼至少需要 6 個字元", gr.update(visible=True), gr.update(visible=False), None
     
     if password != confirm_password:
-        return "❌ 兩次密碼輸入不一致", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 兩次密碼輸入不一致", gr.update(visible=True), gr.update(visible=False), None
     
     users = load_users()
     
     if username in users:
-        return "❌ 使用者名稱已存在", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 使用者名稱已存在", gr.update(visible=True), gr.update(visible=False), None
     
     users[username] = {
         'password': hash_password(password),
@@ -212,28 +288,41 @@ def register_user(username, password, confirm_password):
             json.dump([], f)
         upload_to_hf(user_file)
         
-        return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
+        return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False), None
     else:
-        return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False)
+        return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False), None
 
-def login_user(username, password):
+def login_user(username, password, remember_me):
     """使用者登入"""
     if not username or not password:
-        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False), None
+        return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False), None, None
     
     users = load_users()
     
     if username not in users:
-        return "❌ 使用者不存在", gr.update(visible=True), gr.update(visible=False), None
+        return "❌ 使用者不存在", gr.update(visible=True), gr.update(visible=False), None, None
     
     if users[username]['password'] != hash_password(password):
-        return "❌ 密碼錯誤", gr.update(visible=True), gr.update(visible=False), None
+        return "❌ 密碼錯誤", gr.update(visible=True), gr.update(visible=False), None, None
     
-    return f"✅ 歡迎回來，{username}！", gr.update(visible=False), gr.update(visible=True), username
+    # 創建 Session Token（如果勾選記住我）
+    session_token = None
+    if remember_me:
+        session_token = create_session(username)
+    
+    return f"✅ 歡迎回來，{username}！", gr.update(visible=False), gr.update(visible=True), username, session_token
 
-def logout_user():
+def auto_login(session_token):
+    """自動登入"""
+    username = validate_session(session_token)
+    if username:
+        return username, gr.update(visible=False), gr.update(visible=True)
+    return None, gr.update(visible=True), gr.update(visible=False)
+
+def logout_user(session_token):
     """使用者登出"""
-    return gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
+    delete_session(session_token)
+    return gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), None
 
 def is_expiring_soon(expiry_date_str):
     """檢查是否即將到期（7天內）"""
@@ -522,6 +611,7 @@ with gr.Blocks(
 ) as app:
     
     current_user = gr.State(None)
+    session_token = gr.State(None)
     
     gr.HTML("""
         <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
@@ -538,6 +628,7 @@ with gr.Blocks(
                 login_status = gr.Markdown()
                 login_username = gr.Textbox(label="使用者名稱", placeholder="請輸入使用者名稱")
                 login_password = gr.Textbox(label="密碼", type="password", placeholder="請輸入密碼")
+                remember_me_checkbox = gr.Checkbox(label="記住我（30天內自動登入）", value=True)
                 login_btn = gr.Button("登入", variant="primary", size="lg")
             
             with gr.Tab("📝 註冊"):
@@ -623,37 +714,56 @@ with gr.Blocks(
         deposits_display = gr.HTML(value=get_deposits_display(None))
         statistics_display = gr.HTML(value=get_statistics(None))
     
+    # 頁面載入時自動登入
+    def on_load(token):
+        """頁面載入時檢查 Session"""
+        user, login_vis, main_vis = auto_login(token)
+        if user:
+            user_display = f"👤 使用者：**{user}**"
+            deposits = get_deposits_display(user)
+            stats = get_statistics(user)
+            choices = get_deposit_choices(user)
+            return user, login_vis, main_vis, user_display, deposits, stats, choices
+        return None, login_vis, main_vis, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
+    
+    app.load(
+        fn=on_load,
+        inputs=[session_token],
+        outputs=[current_user, login_area, main_area, user_info, deposits_display, statistics_display, deposit_selector]
+    )
+    
     # 事件處理 - 註冊
     register_btn.click(
         fn=register_user,
         inputs=[register_username, register_password, register_confirm],
-        outputs=[register_status, login_area, main_area]
+        outputs=[register_status, login_area, main_area, session_token]
     )
     
-    # 事件處理 - 登入（修正版）
-    def login_and_update(username, password):
+    # 事件處理 - 登入
+    def login_and_update(username, password, remember_me):
         """登入並更新所有相關狀態"""
-        message, login_vis, main_vis, user = login_user(username, password)
+        message, login_vis, main_vis, user, token = login_user(username, password, remember_me)
         
         if user:  # 登入成功
             user_display = f"👤 使用者：**{user}**"
             deposits = get_deposits_display(user)
             stats = get_statistics(user)
             choices = get_deposit_choices(user)
-            return message, login_vis, main_vis, user, user_display, deposits, stats, choices
+            return message, login_vis, main_vis, user, user_display, deposits, stats, choices, token
         else:  # 登入失敗
-            return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
+            return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[]), None
     
     login_btn.click(
         fn=login_and_update,
-        inputs=[login_username, login_password],
-        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
+        inputs=[login_username, login_password, remember_me_checkbox],
+        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token]
     )
     
     # 事件處理 - 登出
     logout_btn.click(
         fn=logout_user,
-        outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
+        inputs=[session_token],
+        outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector, session_token]
     )
     
     # 事件處理 - 新增記錄
