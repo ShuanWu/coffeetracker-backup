@@ -50,15 +50,7 @@ REDEEM_LINKS = {
 # CSS 樣式 + JavaScript - 讓日期選擇器內嵌顯示
 CUSTOM_CSS = """
 /* 隱藏 Hugging Face Space 頂部標題欄 */
-.gradio-container {
-    margin-top: 0 !important;
-}
-
-header.svelte-1g805jl,
-.gradio-container > div:first-child,
-div[data-testid="block-info"],
-#space-header,
-.huggingface-space-header {
+#huggingface-space-header {
     display: none !important;
 }
 
