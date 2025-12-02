@@ -827,8 +827,19 @@ with gr.Blocks(
     )
     
     # 事件處理 - 註冊
+    def register_and_update(username, password, confirm):
+        """註冊處理"""
+        return register_user(username, password, confirm)
+    
     register_btn.click(
-        fn=register_user,
+        fn=register_and_update,
+        inputs=[register_username, register_password, register_confirm],
+        outputs=[register_status, login_area, main_area]
+    )
+    
+    # Enter 鍵註冊 - 在確認密碼欄位按 Enter
+    register_confirm.submit(
+        fn=register_and_update,
         inputs=[register_username, register_password, register_confirm],
         outputs=[register_status, login_area, main_area]
     )
@@ -847,7 +858,22 @@ with gr.Blocks(
         else:
             return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
     
+    # 點擊登入按鈕
     login_btn.click(
+        fn=login_and_update,
+        inputs=[login_username, login_password, remember_me_checkbox],
+        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    # Enter 鍵登入 - 在使用者名稱欄位按 Enter
+    login_username.submit(
+        fn=login_and_update,
+        inputs=[login_username, login_password, remember_me_checkbox],
+        outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    # Enter 鍵登入 - 在密碼欄位按 Enter
+    login_password.submit(
         fn=login_and_update,
         inputs=[login_username, login_password, remember_me_checkbox],
         outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
@@ -866,6 +892,13 @@ with gr.Blocks(
         return message, deposits, stats, choices
     
     add_btn.click(
+        fn=add_and_refresh,
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    # Enter 鍵新增記錄 - 在咖啡品項欄位按 Enter
+    item_input.submit(
         fn=add_and_refresh,
         inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
