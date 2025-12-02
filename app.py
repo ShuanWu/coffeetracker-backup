@@ -1132,78 +1132,39 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
+            # 日期選擇器 - 使用 HTML datepicker + Gradio js 參數
             with gr.Column(visible=True) as date_picker_column:
                 gr.HTML("""
-                <div style="margin: 10px 0;">
+                <div style="margin-bottom: 16px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                         📅 到期日
                     </label>
                     <input 
                         type="date" 
-                        id="expiry_date_input_visible"
-                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
+                        id="html_date_picker"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
                     />
                 </div>
                 """)
+                
                 expiry_date_input = gr.Textbox(
                     label="",
                     visible=False,
-                    elem_id="expiry_date_hidden_sync",
-                    value=""
+                    elem_id="hidden_date_field"
                 )
+                
+                # 初始化日期選擇器
                 gr.HTML("""
                 <script>
-                    function syncDateInput() {
-                        const visibleDate = document.getElementById('expiry_date_input_visible');
-                        const hiddenInput = document.querySelector('#expiry_date_hidden_sync input, #expiry_date_hidden_sync textarea');
-                        
-                        if (visibleDate && hiddenInput) {
-                            console.log('日期選擇器已連接');
-                            
-                            // 多種事件監聽確保同步
-                            ['change', 'input', 'blur'].forEach(eventType => {
-                                visibleDate.addEventListener(eventType, function() {
-                                    if (this.value) {
-                                        hiddenInput.value = this.value;
-                                        
-                                        // 觸發多個事件確保 Gradio 接收
-                                        ['input', 'change', 'blur'].forEach(evt => {
-                                            const event = new Event(evt, { bubbles: true, cancelable: true });
-                                            hiddenInput.dispatchEvent(event);
-                                        });
-                                        
-                                        console.log('日期已同步:', this.value);
-                                    }
-                                });
-                            });
-                            
-                            // 點擊時自動打開日期選擇器
-                            visibleDate.addEventListener('click', function() {
-                                if (this.showPicker) {
-                                    this.showPicker();
-                                }
-                            });
-                            
-                            // 定期檢查並同步（備用方案）
-                            setInterval(function() {
-                                if (visibleDate.value && hiddenInput.value !== visibleDate.value) {
-                                    hiddenInput.value = visibleDate.value;
-                                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                }
-                            }, 500);
-                            
-                        } else {
-                            console.log('等待元素載入...');
-                            setTimeout(syncDateInput, 200);
-                        }
+                // 設置日期選擇器的初始值
+                setTimeout(function() {
+                    const picker = document.getElementById('html_date_picker');
+                    if (picker) {
+                        const today = new Date().toISOString().split('T')[0];
+                        picker.value = today;
+                        picker.min = today;
                     }
-                    
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', syncDateInput);
-                    } else {
-                        syncDateInput();
-                    }
+                }, 100);
                 </script>
                 """)
 
