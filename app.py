@@ -1132,7 +1132,7 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器 - 最簡單可靠的方案
+            # 日期選擇器 - 使用 HTML datepicker + Gradio js 參數
             with gr.Column(visible=True) as date_picker_column:
                 gr.HTML("""
                 <div style="margin-bottom: 16px;">
@@ -1141,7 +1141,7 @@ with gr.Blocks(
                     </label>
                     <input 
                         type="date" 
-                        id="date_picker_input"
+                        id="html_date_picker"
                         style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
                     />
                 </div>
@@ -1150,44 +1150,25 @@ with gr.Blocks(
                 expiry_date_input = gr.Textbox(
                     label="",
                     visible=False,
-                    elem_id="date_sync_field"
+                    elem_id="hidden_date_field"
                 )
                 
-                # 使用更簡單的同步方式 - 直接監聽 HTML input 的變化
+                # 初始化日期選擇器
                 gr.HTML("""
                 <script>
-                window.addEventListener('load', function() {
-                    const htmlPicker = document.getElementById('date_picker_input');
-                    const gradioField = document.querySelector('#date_sync_field input, #date_sync_field textarea');
-                    
-                    if (htmlPicker && gradioField) {
-                        // 設置今天為預設值
+                // 設置日期選擇器的初始值
+                setTimeout(function() {
+                    const picker = document.getElementById('html_date_picker');
+                    if (picker) {
                         const today = new Date().toISOString().split('T')[0];
-                        htmlPicker.value = today;
-                        htmlPicker.min = today;
-                        gradioField.value = today;
-                        
-                        // 監聽變化並立即同步
-                        htmlPicker.addEventListener('change', function() {
-                            gradioField.value = this.value;
-                            gradioField.dispatchEvent(new Event('input', { bubbles: true }));
-                        });
+                        picker.value = today;
+                        picker.min = today;
                     }
-                });
+                }, 100);
                 </script>
                 """)
                 
-                expiry_date_input = gr.Textbox(
-                    label="",
-                    visible=False,
-                    elem_id="expiry_date_hidden_field"
-                )
-                
-                expiry_date_input = gr.Textbox(
-                    label="",
-                    visible=False,
-                    elem_id="expiry_date_hidden"
-                )
+
                 
             # 日期選擇器 - 使用 HTML + 按鈕觸發時同步
             with gr.Column(visible=True) as date_picker_column:
