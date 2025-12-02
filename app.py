@@ -1164,38 +1164,36 @@ with gr.Blocks(
                             input.style.cursor = 'pointer';
                             input.dataset.initialized = 'true';
                             
-                            // 監聽日期變更事件
-                            input.addEventListener('change', function(e) {{
-                                console.log('Date changed:', this.value);
-                                
-                                // 觸發 Gradio 的 input 事件
-                                const inputEvent = new Event('input', {{ 
-                                    bubbles: true, 
-                                    cancelable: true 
+                            // 監聽日期變更事件（使用多種事件確保觸發）
+                            ['change', 'input', 'blur'].forEach(eventType => {{
+                                input.addEventListener(eventType, function(e) {{
+                                    if (eventType === 'change' || eventType === 'blur') {{
+                                        console.log('Date event:', eventType, this.value);
+                                        
+                                        // 強制更新 Gradio
+                                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                                            window.HTMLInputElement.prototype, 
+                                            'value'
+                                        ).set;
+                                        nativeInputValueSetter.call(this, this.value);
+                                        
+                                        // 觸發所有可能的事件
+                                        ['input', 'change', 'blur'].forEach(evt => {{
+                                            const event = new Event(evt, {{ 
+                                                bubbles: true, 
+                                                cancelable: true 
+                                            }});
+                                            this.dispatchEvent(event);
+                                        }});
+                                    }}
                                 }});
-                                this.dispatchEvent(inputEvent);
-                                
-                                // 觸發 Gradio 的 change 事件
-                                const changeEvent = new Event('change', {{ 
-                                    bubbles: true, 
-                                    cancelable: true 
-                                }});
-                                this.dispatchEvent(changeEvent);
-                                
-                                // 確保 Gradio 接收到值
-                                setTimeout(() => {{
-                                    this.blur();
-                                    this.focus();
-                                }}, 50);
                             }});
                             
-                            // 防止鍵盤輸入（但不影響日期選擇器）
+                            // 防止鍵盤輸入
                             input.addEventListener('keydown', function(e) {{
-                                // 允許 Tab 和 Escape
                                 if (e.key === 'Tab' || e.key === 'Escape') {{
                                     return true;
                                 }}
-                                // 阻止其他按鍵
                                 e.preventDefault();
                                 return false;
                             }});
@@ -1221,22 +1219,16 @@ with gr.Blocks(
                     }});
                 }}
                 
-                // 多次初始化確保成功
+                // 多次初始化
                 setTimeout(initDatePicker, 100);
                 setTimeout(initDatePicker, 500);
                 setTimeout(initDatePicker, 1000);
                 
                 // 監聽 DOM 變化
-                const observer = new MutationObserver(function(mutations) {{
-                    initDatePicker();
-                }});
+                const observer = new MutationObserver(initDatePicker);
                 observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
-
-
-
-
 
 
             
