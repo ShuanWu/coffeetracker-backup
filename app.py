@@ -1028,7 +1028,7 @@ with gr.Blocks(
     gr.HTML("""
         <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
             <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">
-                ☕咖啡寄杯記錄系統
+                咖啡寄杯記錄系統
             </h1>
             <p style="color: #6b7280; margin-top: 8px; font-size: 14px;">管理你的咖啡寄杯，不怕忘記兌換</p>
         </div>
@@ -1108,7 +1108,7 @@ with gr.Blocks(
                         value=today,
                         include_time=False,
                         type="string",
-                        info="點擊選擇到期日期",
+                        # info="點擊選擇到期日期",
                         elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
