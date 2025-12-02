@@ -386,7 +386,19 @@ input[type="datetime-local"]:focus {
         min-height: 44px !important;
     }
 }
+/* 隱藏 DateTime 組件的第二個輸入框（時間） */
+#expiry_date_picker input:nth-child(2),
+#expiry_date_picker input[type="time"],
+.date-picker-container input:nth-child(2),
+.date-picker-container input[type="time"] {
+    display: none !important;
+}
 
+/* 確保日期輸入框佔滿寬度 */
+#expiry_date_picker input:first-child,
+.date-picker-container input:first-child {
+    width: 100% !important;
+}
 
 /* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
 <script>
@@ -1218,7 +1230,7 @@ with gr.Blocks(
                     interactive=True
                 )
 
-                # 日期選擇器 - 手機優化版
+                # 日期選擇器 - 使用 DateTime 但隱藏時間
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
@@ -1233,62 +1245,37 @@ with gr.Blocks(
                         elem_classes=["date-picker-container"]
                     )
                     
-                    # 手機版優化 JavaScript
-                    gr.HTML(f"""
+                    # 隱藏時間輸入框
+                    gr.HTML("""
                     <script>
                     (function() {{
-                        function optimizeDatePickerForMobile() {{
-                            const dateInput = document.querySelector('#expiry_date_picker input[type="date"]') ||
-                                            document.querySelector('#expiry_date_picker input[type="datetime-local"]');
-                            
-                            if (dateInput && !dateInput.dataset.mobileOptimized) {{
-                                dateInput.dataset.mobileOptimized = 'true';
-                                
-                                // 檢測是否為移動設備
-                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                                
-                                if (isMobile) {{
-                                    console.log('✅ 移動設備檢測到，優化日期選擇器');
-                                    
-                                    // 設置最小日期
-                                    dateInput.min = '{today}';
-                                    
-                                    // 點擊時自動展開日曆
-                                    dateInput.addEventListener('click', function(e) {{
-                                        this.showPicker && this.showPicker();
-                                    }});
-                                    
-                                    // 防止手動輸入
-                                    dateInput.addEventListener('keydown', function(e) {{
-                                        if (e.key !== 'Tab' && e.key !== 'Escape') {{
-                                            e.preventDefault();
-                                        }}
-                                    }});
-                                    
-                                    // 確保日期格式正確
-                                    dateInput.addEventListener('change', function() {{
-                                        console.log('日期已選擇:', this.value);
-                                    }});
-                                }} else {{
-                                    console.log('✅ 桌面設備檢測到');
-                                    dateInput.min = '{today}';
-                                }}
+                        function hideTimeInput() {{
+                            const container = document.querySelector('#expiry_date_picker, .date-picker-container');
+                            if (container) {{
+                                const inputs = container.querySelectorAll('input');
+                                inputs.forEach((input, index) => {{
+                                    // 隱藏第二個輸入框（時間）
+                                    if (index > 0 || input.type === 'time') {{
+                                        input.style.display = 'none';
+                                        input.parentElement && (input.parentElement.style.display = 'none');
+                                    }}
+                                }});
+                                console.log('✅ 已隱藏時間輸入框');
                             }}
                         }}
                         
-                        // 多次嘗試優化
-                        setTimeout(optimizeDatePickerForMobile, 100);
-                        setTimeout(optimizeDatePickerForMobile, 500);
-                        setTimeout(optimizeDatePickerForMobile, 1000);
+                        setTimeout(hideTimeInput, 100);
+                        setTimeout(hideTimeInput, 500);
+                        setTimeout(hideTimeInput, 1000);
                         
-                        // 監聽 DOM 變化
-                        new MutationObserver(optimizeDatePickerForMobile).observe(document.body, {{
+                        new MutationObserver(hideTimeInput).observe(document.body, {{
                             childList: true,
                             subtree: true
                         }});
                     }})();
                     </script>
                     """)
+
 
                 # 天數輸入（預設隱藏）
                 with gr.Column(visible=False) as days_input_column:
