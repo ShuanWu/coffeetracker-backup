@@ -1128,115 +1128,41 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 新增：到期日輸入方式選擇
-            expiry_input_method = gr.Radio(
-                label="📅 到期日輸入方式",
-                choices=["選擇日期", "輸入天數"],
-                value="選擇日期",
-                interactive=True
-            )
-            
-         
-            # 日期選擇器 - 確保顯示版本
-            with gr.Column(visible=True) as date_picker_column:
-                today = datetime.now().strftime('%Y-%m-%d')
-                
-                expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    value=today,
-                    elem_classes=["datepicker-readonly"]
+                            # 新增：到期日輸入方式選擇
+                expiry_input_method = gr.Radio(
+                    label="📅 到期日輸入方式",
+                    choices=["選擇日期", "輸入天數"],
+                    value="選擇日期",
+                    interactive=True
                 )
-                
-                gr.HTML(f"""
-                <script>
-                // 立即執行函數
-                (function initDatePickerImmediately() {{
-                    console.log('開始初始化日期選擇器...');
-                    
-                    function setupDatePicker() {{
-                        // 找到所有 datepicker-readonly 類別的容器
-                        const containers = document.querySelectorAll('.datepicker-readonly');
-                        console.log('找到容器數量:', containers.length);
-                        
-                        containers.forEach((container, index) => {{
-                            const input = container.querySelector('input, textarea');
-                            console.log('容器', index, '找到的輸入框:', input);
-                            
-                            if (input) {{
-                                console.log('輸入框當前類型:', input.type);
-                                
-                                // 強制設置為日期類型
-                                input.setAttribute('type', 'date');
-                                input.type = 'date';
-                                input.min = '{today}';
-                                
-                                if (!input.value || input.value === '') {{
-                                    input.value = '{today}';
-                                }}
-                                
-                                input.style.cursor = 'pointer';
-                                
-                                console.log('設置後的類型:', input.type);
-                                console.log('設置後的值:', input.value);
-                                
-                                // 防止手動輸入
-                                input.onkeydown = function(e) {{
-                                    if (e.key !== 'Tab' && e.key !== 'Escape') {{
-                                        e.preventDefault();
-                                        return false;
-                                    }}
-                                }};
-                                
-                                input.onpaste = function(e) {{
-                                    e.preventDefault();
-                                    return false;
-                                }};
-                            }}
-                        }});
-                    }}
-                    
-                    // 多次嘗試初始化
-                    setupDatePicker();
-                    setTimeout(setupDatePicker, 100);
-                    setTimeout(setupDatePicker, 300);
-                    setTimeout(setupDatePicker, 500);
-                    setTimeout(setupDatePicker, 1000);
-                    setTimeout(setupDatePicker, 2000);
-                    
-                    // 監聽 DOM 變化
-                    const observer = new MutationObserver(function(mutations) {{
-                        setupDatePicker();
-                    }});
-                    
-                    observer.observe(document.body, {{
-                        childList: true,
-                        subtree: true,
-                        attributes: true,
-                        attributeFilter: ['class']
-                    }});
-                    
-                    console.log('日期選擇器初始化完成');
-                }})();
-                </script>
-                """)
 
+                # 日期選擇器 - 使用 Gradio 原生 DateTime
+                with gr.Column(visible=True) as date_picker_column:
+                    from datetime import datetime
+                    today = datetime.now().strftime('%Y-%m-%d')
+                    
+                    expiry_date_input = gr.DateTime(
+                        label="📅 到期日",
+                        value=today,
+                        include_time=False,  # 只顯示日期，不顯示時間
+                        type="string",  # 返回字符串格式
+                        info="點擊選擇到期日期"
+                    )
 
+                # 天數輸入（預設隱藏）
+                with gr.Column(visible=False) as days_input_column:
+                    days_until_expiry = gr.Number(
+                        label="⏰ 幾天後到期",
+                        value=30,
+                        minimum=1,
+                        precision=0,
+                        info="輸入距離今天幾天後到期（例如：30 表示 30 天後到期）"
+                    )
+                    calculated_date_display = gr.Markdown(
+                        value="",
+                        visible=True
+                    )
 
-
-            
-            # 天數輸入（預設隱藏）
-            with gr.Column(visible=False) as days_input_column:
-                days_until_expiry = gr.Number(
-                    label="⏰ 幾天後到期",
-                    value=30,
-                    minimum=1,
-                    precision=0,
-                    info="輸入距離今天幾天後到期（例如：30 表示 30 天後到期）"
-                )
-                calculated_date_display = gr.Markdown(
-                    value="",
-                    visible=True
-                )
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
