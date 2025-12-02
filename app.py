@@ -1337,4 +1337,26 @@ with gr.Blocks(
     def delete_and_refresh(user, deposit_id):
         """刪除並刷新顯示"""
         message, deposits, stats, choices = delete_deposit(user, deposit_id)
-        return message, deposits, stats
+        return message, deposits, stats, choices
+    
+    delete_btn.click(
+        fn=delete_and_refresh,
+        inputs=[current_user, deposit_selector],
+        outputs=[action_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    # 事件處理 - 重新整理
+    def refresh_all(user):
+        """重新整理所有顯示"""
+        deposits, stats, choices = refresh_display(user)
+        return deposits, stats, choices
+    
+    refresh_btn.click(
+        fn=refresh_all,
+        inputs=[current_user],
+        outputs=[deposits_display, statistics_display, deposit_selector]
+    )
+
+if __name__ == "__main__":
+    app.launch()
+
