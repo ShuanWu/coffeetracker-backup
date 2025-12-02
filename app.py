@@ -86,12 +86,15 @@ body {
     caret-color: transparent !important;
     cursor: pointer !important;
     user-select: none !important;
+    background-color: #f9fafb !important; /* 淺灰背景表示不可輸入 */
 }
 
 .datepicker-readonly input:focus {
     caret-color: transparent !important;
+    background-color: #f3f4f6 !important;
 }
 
+/* 防止文字選取 */
 .datepicker-readonly * {
     user-select: none !important;
     -webkit-user-select: none !important;
@@ -103,6 +106,8 @@ body {
 .datepicker-readonly button {
     pointer-events: auto !important;
     cursor: pointer !important;
+}
+
 }
 
 /* 確保日期選擇器容器有相對定位 */
@@ -1132,18 +1137,19 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器 - 使用 Gradio 原生支援
+            # 日期選擇器 - 只能點擊選擇，不能手動輸入
             with gr.Column(visible=True) as date_picker_column:
                 today = datetime.now().strftime('%Y-%m-%d')
                 
                 expiry_date_input = gr.Textbox(
                     label="📅 到期日",
                     value=today,
-                    placeholder="選擇日期",
-                    elem_classes=["datepicker-readonly"]
+                    placeholder="點擊選擇日期",
+                    elem_classes=["datepicker-readonly"],
+                    interactive=True
                 )
                 
-                # 將輸入框轉換為日期選擇器
+                # 將輸入框轉換為日期選擇器並禁用手動輸入
                 gr.HTML(f"""
                 <script>
                 function initDatePicker() {{
@@ -1154,6 +1160,33 @@ with gr.Blocks(
                             input.min = '{today}';
                             input.value = '{today}';
                             input.style.cursor = 'pointer';
+                            
+                            // 禁用手動輸入
+                            input.readOnly = true;
+                            
+                            // 防止鍵盤輸入
+                            input.addEventListener('keydown', function(e) {{
+                                e.preventDefault();
+                                return false;
+                            }});
+                            
+                            // 防止貼上
+                            input.addEventListener('paste', function(e) {{
+                                e.preventDefault();
+                                return false;
+                            }});
+                            
+                            // 點擊時打開日期選擇器
+                            input.addEventListener('click', function() {{
+                                this.showPicker && this.showPicker();
+                            }});
+                            
+                            // 防止選取文字
+                            input.addEventListener('mousedown', function(e) {{
+                                if (e.detail > 1) {{
+                                    e.preventDefault();
+                                }}
+                            }});
                         }}
                     }});
                 }}
@@ -1166,6 +1199,7 @@ with gr.Blocks(
                 observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
+
 
 
 
