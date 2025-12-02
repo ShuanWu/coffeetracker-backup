@@ -760,14 +760,14 @@ with gr.Blocks(
                     label="🏪 商店名稱", 
                     choices=STORE_OPTIONS,
                     interactive=True,
-                    allow_custom_value=False,
+                    allow_custom_value=False,  # 禁止自訂輸入
                     scale=1
                 )
                 redeem_method_input = gr.Dropdown(
                     label="📦 兌換途徑", 
                     choices=REDEEM_METHODS,
                     interactive=True,
-                    allow_custom_value=False,
+                    allow_custom_value=False,  # 禁止自訂輸入
                     scale=1
                 )
             
@@ -795,7 +795,8 @@ with gr.Blocks(
             deposit_selector = gr.Dropdown(
                 label="📋 選擇寄杯記錄",
                 choices=[],
-                interactive=True
+                interactive=True,
+                allow_custom_value=False  # 禁止自訂輸入
             )
             
             with gr.Row():
