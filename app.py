@@ -6,7 +6,6 @@ import hashlib
 from huggingface_hub import HfApi, hf_hub_download, upload_file
 import secrets
 import threading
-import time
 
 # Hugging Face 設定
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -67,6 +66,9 @@ cache = {
 # 快取鎖
 cache_lock = threading.Lock()
 
+# 全域變數用於儲存 label 到 id 的映射
+deposit_label_to_id = {}
+
 def download_from_hf(filename):
     """從 Hugging Face Space 下載檔案"""
     try:
@@ -76,7 +78,7 @@ def download_from_hf(filename):
                 filename=filename,
                 repo_type="space",
                 token=HF_TOKEN,
-                force_download=False  # 使用快取
+                force_download=False
             )
             return local_path
     except Exception as e:
@@ -109,11 +111,9 @@ def hash_password(password):
 def load_users():
     """載入使用者資料（優先使用快取）"""
     with cache_lock:
-        # 如果快取存在且不到 5 分鐘，直接返回
         if cache['users'] is not None:
             return cache['users']
     
-    # 先檢查本地檔案
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, 'r', encoding='utf-8') as f:
@@ -124,7 +124,6 @@ def load_users():
         except:
             pass
     
-    # 再從 HF 下載（背景執行）
     def load_from_hf():
         hf_file = download_from_hf(USERS_FILE)
         if hf_file and os.path.exists(hf_file):
@@ -155,7 +154,6 @@ def save_users(users):
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
         
-        # 非同步上傳
         upload_to_hf_async(USERS_FILE)
         return True
     except Exception as e:
@@ -178,7 +176,6 @@ def load_sessions():
         except:
             pass
     
-    # 背景載入
     def load_from_hf():
         hf_file = download_from_hf(SESSIONS_FILE)
         if hf_file and os.path.exists(hf_file):
@@ -219,7 +216,6 @@ def create_session(username, request: gr.Request):
     with cache_lock:
         sessions = cache['sessions'] if cache['sessions'] else load_sessions()
     
-    # 清理過期的 sessions
     now = datetime.now()
     sessions = {k: v for k, v in sessions.items() 
                 if datetime.fromisoformat(v['expires_at']) > now}
@@ -281,14 +277,12 @@ def load_deposits(username):
     if not username:
         return []
     
-    # 檢查快取
     with cache_lock:
         if username in cache['deposits']:
             return cache['deposits'][username]
     
     data_file = get_user_data_file(username)
     
-    # 先檢查本地
     if os.path.exists(data_file):
         try:
             with open(data_file, 'r', encoding='utf-8') as f:
@@ -299,7 +293,6 @@ def load_deposits(username):
         except:
             pass
     
-    # 背景載入 HF
     def load_from_hf():
         hf_path = f"{DATA_DIR}/{username}.json"
         hf_file = download_from_hf(hf_path)
@@ -492,22 +485,31 @@ def get_deposit_choices(username):
     if not deposits:
         return gr.update(choices=[], value=None)
     
-    choices = []
+    global deposit_label_to_id
+    deposit_label_to_id = {}
+    choices_list = []
+    
     for d in deposits:
         expired_tag = " [已過期]" if is_expired(d['expiryDate']) else ""
         expiring_tag = " [即將到期]" if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate']) else ""
         label = f"{d['item']} - {d['store']} ({d['quantity']}杯) - 到期:{format_date(d['expiryDate'])}{expired_tag}{expiring_tag}"
-        choices.append((label, d['id']))
+        
+        deposit_label_to_id[label] = d['id']
+        choices_list.append(label)
     
-    return gr.update(choices=choices, value=None)
+    return gr.update(choices=choices_list, value=None)
 
-def redeem_one(username, deposit_id):
+def redeem_one(username, deposit_label):
     """兌換一杯"""
     if not username:
         return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    if not deposit_id:
+    if not deposit_label:
         return "❌ 請選擇要兌換的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    deposit_id = deposit_label_to_id.get(deposit_label)
+    if not deposit_id:
+        return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     updated = False
@@ -531,13 +533,17 @@ def redeem_one(username, deposit_id):
     else:
         return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
-def delete_deposit(username, deposit_id):
+def delete_deposit(username, deposit_label):
     """刪除寄杯記錄"""
     if not username:
         return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    if not deposit_id:
+    if not deposit_label:
         return "❌ 請選擇要刪除的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    deposit_id = deposit_label_to_id.get(deposit_label)
+    if not deposit_id:
+        return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
     deposit_name = ""
@@ -689,7 +695,6 @@ def refresh_display(username):
     """重新整理顯示"""
     return get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
-# 啟動時預載入資料
 def preload_data():
     """預載入常用資料"""
     print("🔄 預載入資料中...")
@@ -697,7 +702,6 @@ def preload_data():
     load_sessions()
     print("✅ 預載入完成")
 
-# 背景預載入
 threading.Thread(target=preload_data, daemon=True).start()
 
 # 建立 Gradio 介面
@@ -759,13 +763,13 @@ with gr.Blocks(
                 store_input = gr.Radio(
                     label="🏪 商店名稱", 
                     choices=STORE_OPTIONS,
-                    value=STORE_OPTIONS[0],  # 預設選擇第一個
+                    value=STORE_OPTIONS[0],
                     scale=1
                 )
                 redeem_method_input = gr.Radio(
                     label="📦 兌換途徑", 
                     choices=REDEEM_METHODS,
-                    value=REDEEM_METHODS[0],  # 預設選擇第一個
+                    value=REDEEM_METHODS[0],
                     scale=1
                 )
             
@@ -835,7 +839,6 @@ with gr.Blocks(
         outputs=[register_status, login_area, main_area]
     )
     
-    # Enter 鍵註冊 - 在確認密碼欄位按 Enter
     register_confirm.submit(
         fn=register_and_update,
         inputs=[register_username, register_password, register_confirm],
@@ -856,21 +859,18 @@ with gr.Blocks(
         else:
             return message, login_vis, main_vis, None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
     
-    # 點擊登入按鈕
     login_btn.click(
         fn=login_and_update,
         inputs=[login_username, login_password, remember_me_checkbox],
         outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
     )
     
-    # Enter 鍵登入 - 在使用者名稱欄位按 Enter
     login_username.submit(
         fn=login_and_update,
         inputs=[login_username, login_password, remember_me_checkbox],
         outputs=[login_status, login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
     )
     
-    # Enter 鍵登入 - 在密碼欄位按 Enter
     login_password.submit(
         fn=login_and_update,
         inputs=[login_username, login_password, remember_me_checkbox],
@@ -895,7 +895,6 @@ with gr.Blocks(
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    # Enter 鍵新增記錄 - 在咖啡品項欄位按 Enter
     item_input.submit(
         fn=add_and_refresh,
         inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
