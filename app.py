@@ -47,7 +47,7 @@ REDEEM_LINKS = {
     }
 }
 
-# CSS 樣式 - 禁用下拉選單輸入
+# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
 CUSTOM_CSS = """
 /* 隱藏下拉選單的游標和禁用輸入 */
 .dropdown-readonly input {
@@ -66,6 +66,36 @@ CUSTOM_CSS = """
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
+}
+
+/* 隱藏日期選擇器的游標和禁用輸入 */
+.datepicker-readonly input {
+    caret-color: transparent !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    pointer-events: none !important;
+}
+
+.datepicker-readonly input:focus {
+    caret-color: transparent !important;
+}
+
+.datepicker-readonly * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+/* 讓日期選擇器的按鈕可以點擊 */
+.datepicker-readonly button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.datepicker-readonly .calendar-icon {
+    pointer-events: auto !important;
+    cursor: pointer !important;
 }
 """
 
@@ -800,10 +830,12 @@ with gr.Blocks(
                     scale=1
                 )
             
-            expiry_date_input = gr.Textbox(
+            # 使用 DateTime 元件作為日期選擇器
+            expiry_date_input = gr.DateTime(
                 label="📅 到期日",
-                placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
-                info="請輸入日期，格式為 YYYY-MM-DD"
+                include_time=False,
+                type="string",
+                elem_classes=["datepicker-readonly"]
             )
             
             add_status = gr.Markdown()
