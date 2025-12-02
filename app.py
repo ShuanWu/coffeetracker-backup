@@ -48,6 +48,64 @@ REDEEM_LINKS = {
 
 # CSS 樣式 + JavaScript - 讓日期選擇器內嵌顯示
 CUSTOM_CSS = """
+/* ===== 強制隱藏 DateTime 組件的時間輸入框 ===== */
+
+/* 針對 expiry_date_picker 的時間輸入框 */
+#expiry_date_picker .timebox .time,
+#expiry_date_picker input.time,
+#expiry_date_picker input[class*="time"] {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+/* 隱藏日曆按鈕（使用原生日期選擇器） */
+#expiry_date_picker button.calendar,
+#expiry_date_picker .calendar {
+    display: none !important;
+}
+
+/* 確保 timebox 容器正確顯示 */
+#expiry_date_picker .timebox {
+    display: flex !important;
+    width: 100% !important;
+    gap: 0 !important;
+}
+
+/* 確保日期輸入框佔滿寬度 */
+#expiry_date_picker .datetime,
+#expiry_date_picker input.datetime,
+#expiry_date_picker input[type="date"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+}
+
+/* 針對所有 date-picker-container 類別 */
+.date-picker-container .timebox .time,
+.date-picker-container input.time {
+    display: none !important;
+}
+
+.date-picker-container button.calendar {
+    display: none !important;
+}
+
+.date-picker-container .datetime,
+.date-picker-container input[type="date"] {
+    width: 100% !important;
+    flex: 1 !important;
+}
+
 /* 隱藏 Hugging Face Space 頂部標題欄 */
 #huggingface-space-header {
     display: none !important;
@@ -1063,7 +1121,7 @@ with gr.Blocks(
                     interactive=True
                 )
 
-               # 保留 gr.DateTime 但隱藏時間輸入框
+               # 日期選擇器 - 保留 gr.DateTime 但隱藏時間輸入框
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
@@ -1077,53 +1135,130 @@ with gr.Blocks(
                         elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
+
+                # 在 date_picker_column 外面添加 JavaScript（重要！）
+                gr.HTML(f"""
+                <style>
+                /* 內聯 CSS 強制隱藏 */
+                #expiry_date_picker .time,
+                #expiry_date_picker input.time {{
+                    display: none !important;
+                    width: 0 !important;
+                    height: 0 !important;
+                }}
+
+                #expiry_date_picker button.calendar {{
+                    display: none !important;
+                }}
+
+                #expiry_date_picker .datetime,
+                #expiry_date_picker input[type="date"] {{
+                    width: 100% !important;
+                }}
+                </style>
+
+                <script>
+                (function() {{
+                    console.log('=== 開始隱藏時間輸入框 ===');
                     
-                    # 強制隱藏時間輸入框
-                    gr.HTML("""
-                    <script>
-                    (function() {
-                        function hideTimeInput() {
-                            const container = document.querySelector('#expiry_date_picker');
-                            if (container) {
-                                // 隱藏時間輸入框
-                                const timeInput = container.querySelector('.time, input.time');
-                                if (timeInput) {
-                                    timeInput.style.display = 'none';
-                                    timeInput.style.width = '0';
-                                    timeInput.style.height = '0';
-                                    timeInput.style.opacity = '0';
-                                    timeInput.style.visibility = 'hidden';
-                                    console.log('✅ 已隱藏時間輸入框');
-                                }
-                                
-                                // 隱藏日曆按鈕
-                                const calendarBtn = container.querySelector('button.calendar');
-                                if (calendarBtn) {
-                                    calendarBtn.style.display = 'none';
-                                    console.log('✅ 已隱藏日曆按鈕');
-                                }
-                                
-                                // 確保日期輸入框佔滿寬度
-                                const dateInput = container.querySelector('.datetime, input.datetime, input[type="date"]');
-                                if (dateInput) {
-                                    dateInput.style.width = '100%';
-                                    dateInput.style.flex = '1';
-                                    console.log('✅ 日期輸入框已調整');
-                                }
-                            }
-                        }
+                    function forceHideTimeInput() {{
+                        // 方法 1: 通過 ID 查找
+                        let container = document.querySelector('#expiry_date_picker');
                         
-                        setTimeout(hideTimeInput, 100);
-                        setTimeout(hideTimeInput, 500);
-                        setTimeout(hideTimeInput, 1000);
+                        // 方法 2: 通過 class 查找
+                        if (!container) {{
+                            container = document.querySelector('.date-picker-container');
+                        }}
                         
-                        new MutationObserver(hideTimeInput).observe(document.body, {
-                            childList: true,
-                            subtree: true
-                        });
-                    })();
-                    </script>
-                    """)
+                        if (container) {{
+                            console.log('✅ 找到容器:', container);
+                            
+                            // 查找並隱藏時間輸入框
+                            const timeInputs = container.querySelectorAll('.time, input.time, input[class*="time"]');
+                            console.log('找到時間輸入框數量:', timeInputs.length);
+                            
+                            timeInputs.forEach((input, index) => {{
+                                console.log('處理時間輸入框', index, ':', input);
+                                input.style.display = 'none';
+                                input.style.width = '0';
+                                input.style.height = '0';
+                                input.style.opacity = '0';
+                                input.style.visibility = 'hidden';
+                                input.style.position = 'absolute';
+                                input.style.pointerEvents = 'none';
+                                
+                                // 也隱藏父元素（如果父元素只包含這個輸入框）
+                                if (input.parentElement && input.parentElement.children.length === 1) {{
+                                    input.parentElement.style.display = 'none';
+                                }}
+                            }});
+                            
+                            // 查找並隱藏日曆按鈕
+                            const calendarBtns = container.querySelectorAll('button.calendar, .calendar');
+                            console.log('找到日曆按鈕數量:', calendarBtns.length);
+                            
+                            calendarBtns.forEach((btn, index) => {{
+                                console.log('處理日曆按鈕', index, ':', btn);
+                                btn.style.display = 'none';
+                            }});
+                            
+                            // 確保日期輸入框佔滿寬度
+                            const dateInputs = container.querySelectorAll('.datetime, input.datetime, input[type="date"]');
+                            console.log('找到日期輸入框數量:', dateInputs.length);
+                            
+                            dateInputs.forEach((input, index) => {{
+                                console.log('處理日期輸入框', index, ':', input);
+                                input.style.width = '100%';
+                                input.style.flex = '1';
+                                input.style.maxWidth = '100%';
+                                input.min = '{today}';
+                            }});
+                            
+                            // 調整 timebox 容器
+                            const timebox = container.querySelector('.timebox');
+                            if (timebox) {{
+                                console.log('✅ 找到 timebox:', timebox);
+                                timebox.style.display = 'flex';
+                                timebox.style.width = '100%';
+                                timebox.style.gap = '0';
+                            }}
+                            
+                            console.log('✅ 時間輸入框隱藏完成');
+                            return true;
+                        }} else {{
+                            console.log('❌ 未找到容器');
+                            return false;
+                        }}
+                    }}
+                    
+                    // 立即執行
+                    forceHideTimeInput();
+                    
+                    // 延遲執行多次
+                    setTimeout(forceHideTimeInput, 50);
+                    setTimeout(forceHideTimeInput, 100);
+                    setTimeout(forceHideTimeInput, 200);
+                    setTimeout(forceHideTimeInput, 500);
+                    setTimeout(forceHideTimeInput, 1000);
+                    setTimeout(forceHideTimeInput, 2000);
+                    
+                    // 監聽 DOM 變化
+                    const observer = new MutationObserver(function(mutations) {{
+                        forceHideTimeInput();
+                    }});
+                    
+                    observer.observe(document.body, {{
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['class', 'style']
+                    }});
+                    
+                    console.log('=== 監聽器已設置 ===');
+                }})();
+                </script>
+                """)
+
 
 
                 # 天數輸入（預設隱藏）
