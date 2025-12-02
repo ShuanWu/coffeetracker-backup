@@ -1071,63 +1071,48 @@ with gr.Blocks(
                     expiry_date_input = gr.DateTime(
                         label="📅 到期日",
                         value=today,
-                        include_time=False,
-                        type="string",
+                        # include_time=False,
+                        # type="string",
+                        placeholder="選擇日期",
                         info="點擊選擇到期日期",
-                        elem_id="expiry_date_picker",
+                        # elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
                     
-                    # 手機版優化 JavaScript
+                     # 轉換為日期選擇器
                     gr.HTML(f"""
                     <script>
                     (function() {{
-                        function optimizeDatePickerForMobile() {{
-                            const dateInput = document.querySelector('#expiry_date_picker input[type="date"]') ||
-                                            document.querySelector('#expiry_date_picker input[type="datetime-local"]');
+                        function setupDatePicker() {{
+                            const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
                             
-                            if (dateInput && !dateInput.dataset.mobileOptimized) {{
-                                dateInput.dataset.mobileOptimized = 'true';
+                            if (input && input.type !== 'date') {{
+                                input.type = 'date';
+                                input.min = '{today}';
+                                input.value = '{today}';
                                 
-                                // 檢測是否為移動設備
-                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                console.log('✅ 日期選擇器已設置，類型:', input.type, '值:', input.value);
                                 
-                                if (isMobile) {{
-                                    console.log('✅ 移動設備檢測到，優化日期選擇器');
-                                    
-                                    // 設置最小日期
-                                    dateInput.min = '{today}';
-                                    
-                                    // 點擊時自動展開日曆
-                                    dateInput.addEventListener('click', function(e) {{
-                                        this.showPicker && this.showPicker();
-                                    }});
-                                    
-                                    // 防止手動輸入
-                                    dateInput.addEventListener('keydown', function(e) {{
-                                        if (e.key !== 'Tab' && e.key !== 'Escape') {{
-                                            e.preventDefault();
-                                        }}
-                                    }});
-                                    
-                                    // 確保日期格式正確
-                                    dateInput.addEventListener('change', function() {{
-                                        console.log('日期已選擇:', this.value);
-                                    }});
-                                }} else {{
-                                    console.log('✅ 桌面設備檢測到');
-                                    dateInput.min = '{today}';
-                                }}
+                                // 防止手動輸入
+                                input.addEventListener('keydown', function(e) {{
+                                    if (e.key !== 'Tab' && e.key !== 'Escape') {{
+                                        e.preventDefault();
+                                    }}
+                                }});
+                                
+                                input.addEventListener('paste', function(e) {{
+                                    e.preventDefault();
+                                }});
                             }}
                         }}
                         
-                        // 多次嘗試優化
-                        setTimeout(optimizeDatePickerForMobile, 100);
-                        setTimeout(optimizeDatePickerForMobile, 500);
-                        setTimeout(optimizeDatePickerForMobile, 1000);
+                        // 多次嘗試設置
+                        setTimeout(setupDatePicker, 100);
+                        setTimeout(setupDatePicker, 500);
+                        setTimeout(setupDatePicker, 1000);
                         
                         // 監聽 DOM 變化
-                        new MutationObserver(optimizeDatePickerForMobile).observe(document.body, {{
+                        new MutationObserver(setupDatePicker).observe(document.body, {{
                             childList: true,
                             subtree: true
                         }});
