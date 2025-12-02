@@ -1130,37 +1130,47 @@ with gr.Blocks(
          
             # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
             with gr.Column(visible=True) as date_picker_column:
+                gr.HTML("""
+                <div style="margin: 10px 0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                        📅 到期日
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expiry_date_input"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
+                        required
+                    />
+                </div>
+                """)
                 expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    placeholder="請選擇日期",
-                    type="text",
-                    elem_id="expiry_date_picker",
-                    interactive=True
+                    visible=False,
+                    elem_id="expiry_date_hidden"
                 )
                 gr.HTML("""
                 <script>
-                    function setupDatePicker() {
-                        const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
-                        if (input) {
-                            input.type = 'date';
-                            input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;';
-                            input.addEventListener('click', function() {
+                    (function() {
+                        const dateInput = document.getElementById('expiry_date_input');
+                        const hiddenInput = document.querySelector('#expiry_date_hidden input, #expiry_date_hidden textarea');
+                        
+                        if (dateInput && hiddenInput) {
+                            // 當日期改變時，同步到隱藏的 Gradio 輸入框
+                            dateInput.addEventListener('change', function() {
+                                hiddenInput.value = this.value;
+                                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            });
+                            
+                            // 點擊時自動打開日期選擇器
+                            dateInput.addEventListener('click', function() {
                                 if (this.showPicker) {
                                     this.showPicker();
                                 }
                             });
-                        } else {
-                            setTimeout(setupDatePicker, 200);
                         }
-                    }
-                    
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', setupDatePicker);
-                    } else {
-                        setupDatePicker();
-                    }
+                    })();
                 </script>
                 """)
+
 
 
 
