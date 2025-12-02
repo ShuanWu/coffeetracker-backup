@@ -48,6 +48,7 @@ REDEEM_LINKS = {
 }
 
 # CSS 樣式 - 禁用下拉選單和日期選擇器輸入
+# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
 CUSTOM_CSS = """
 /* 隱藏下拉選單的游標和禁用輸入 */
 .dropdown-readonly input {
@@ -73,7 +74,6 @@ CUSTOM_CSS = """
     caret-color: transparent !important;
     cursor: pointer !important;
     user-select: none !important;
-    pointer-events: none !important;
 }
 
 .datepicker-readonly input:focus {
@@ -98,45 +98,91 @@ CUSTOM_CSS = """
     position: relative !important;
 }
 
-/* 日期選擇器下拉顯示在輸入框下方 */
+/* ===== 日期選擇器日曆樣式 (內嵌顯示在頁面中) ===== */
+
+/* 日曆顯示在輸入框正下方，不是彈出視窗 */
 .flatpickr-calendar {
     position: absolute !important;
-    margin-top: 8px !important;
-    z-index: 9999 !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    top: calc(100% + 4px) !important;
+    left: 0 !important;
+    right: auto !important;
+    margin: 0 !important;
+    z-index: 99999 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
     border-radius: 12px !important;
     background: white !important;
     border: 1px solid #e5e7eb !important;
+    min-width: 320px !important;
+}
+
+/* 確保日曆在打開時可見並內嵌在頁面中 */
+.flatpickr-calendar.open {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: absolute !important;
+}
+
+/* 防止日曆使用 inline 模式 */
+.flatpickr-calendar.inline {
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+}
+
+/* 日曆箭頭位置調整 */
+.flatpickr-calendar.arrowTop,
+.flatpickr-calendar.arrowBottom {
+    position: absolute !important;
+}
+
+.flatpickr-calendar.arrowTop:before,
+.flatpickr-calendar.arrowTop:after {
+    border-bottom-color: #f97316 !important;
 }
 
 /* 日期選擇器內部元素 */
 .flatpickr-calendar .flatpickr-months {
-    background: #f97316 !important;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
     border-radius: 12px 12px 0 0 !important;
-    padding: 12px !important;
+    padding: 16px !important;
 }
 
 .flatpickr-calendar .flatpickr-current-month {
     color: white !important;
     font-size: 18px !important;
     font-weight: 600 !important;
+    padding: 8px 0 !important;
 }
 
 .flatpickr-calendar .flatpickr-prev-month,
 .flatpickr-calendar .flatpickr-next-month {
     fill: white !important;
+    padding: 8px !important;
+    transition: all 0.2s !important;
 }
 
 .flatpickr-calendar .flatpickr-prev-month:hover,
 .flatpickr-calendar .flatpickr-next-month:hover {
     fill: #fef3c7 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
 }
 
 /* 星期標題 */
+.flatpickr-calendar .flatpickr-weekdays {
+    background: #fff7ed !important;
+    padding: 12px 0 !important;
+}
+
 .flatpickr-calendar .flatpickr-weekday {
-    color: #6b7280 !important;
+    color: #92400e !important;
     font-size: 14px !important;
     font-weight: 600 !important;
+}
+
+/* 日期容器 */
+.flatpickr-calendar .flatpickr-days {
+    padding: 12px !important;
 }
 
 /* 日期按鈕 */
@@ -146,11 +192,15 @@ CUSTOM_CSS = """
     border-radius: 8px !important;
     height: 40px !important;
     line-height: 40px !important;
+    margin: 2px !important;
+    transition: all 0.2s !important;
 }
 
 .flatpickr-calendar .flatpickr-day:hover {
-    background: #fef3c7 !important;
-    border-color: #fef3c7 !important;
+    background: #fed7aa !important;
+    border-color: #fed7aa !important;
+    color: #92400e !important;
+    transform: scale(1.05) !important;
 }
 
 .flatpickr-calendar .flatpickr-day.selected {
@@ -158,16 +208,24 @@ CUSTOM_CSS = """
     border-color: #f97316 !important;
     color: white !important;
     font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4) !important;
 }
 
 .flatpickr-calendar .flatpickr-day.today {
-    border-color: #f97316 !important;
+    border: 2px solid #f97316 !important;
     color: #f97316 !important;
     font-weight: 600 !important;
+    background: #fff7ed !important;
 }
 
 .flatpickr-calendar .flatpickr-day.today:hover {
-    background: #fff7ed !important;
+    background: #ffedd5 !important;
+    border-color: #f97316 !important;
+}
+
+.flatpickr-calendar .flatpickr-day.today.selected {
+    background: #f97316 !important;
+    color: white !important;
     border-color: #f97316 !important;
 }
 
@@ -175,6 +233,23 @@ CUSTOM_CSS = """
 .flatpickr-calendar .flatpickr-day.prevMonthDay,
 .flatpickr-calendar .flatpickr-day.nextMonthDay {
     color: #d1d5db !important;
+}
+
+.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
+.flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
+    color: #9ca3af !important;
+    background: #f3f4f6 !important;
+}
+
+/* 禁用的日期 */
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled {
+    color: #e5e7eb !important;
+    cursor: not-allowed !important;
+}
+
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover {
+    background: transparent !important;
+    transform: none !important;
 }
 
 /* 清除和今天按鈕 */
@@ -185,11 +260,13 @@ CUSTOM_CSS = """
     padding: 8px 16px !important;
     border-radius: 8px !important;
     font-size: 14px !important;
+    transition: all 0.2s !important;
 }
 
 .flatpickr-calendar .flatpickr-clear:hover,
 .flatpickr-calendar .flatpickr-today:hover {
     background: #fff7ed !important;
+    color: #ea580c !important;
 }
 
 /* 月份下拉選單 */
@@ -198,30 +275,77 @@ CUSTOM_CSS = """
     color: #1f2937 !important;
     border: 1px solid #e5e7eb !important;
     border-radius: 6px !important;
-    padding: 4px !important;
+    padding: 4px 8px !important;
     font-size: 16px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months:hover {
+    background: #f9fafb !important;
 }
 
 /* 年份輸入 */
+.flatpickr-calendar .numInputWrapper {
+    background: transparent !important;
+}
+
 .flatpickr-calendar .numInputWrapper input {
     color: white !important;
     font-weight: 600 !important;
+    background: transparent !important;
 }
 
-/* 手機版優化 */
+.flatpickr-calendar .numInputWrapper:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+}
+
+/* 年份增減按鈕 */
+.flatpickr-calendar .numInputWrapper .arrowUp,
+.flatpickr-calendar .numInputWrapper .arrowDown {
+    border: none !important;
+}
+
+.flatpickr-calendar .numInputWrapper .arrowUp:after,
+.flatpickr-calendar .numInputWrapper .arrowDown:after {
+    border-bottom-color: white !important;
+    border-top-color: white !important;
+}
+
+/* 確保日曆在小螢幕上也正常顯示 */
 @media (max-width: 768px) {
     .flatpickr-calendar {
-        width: 100% !important;
-        max-width: 100% !important;
-        left: 0 !important;
-        right: 0 !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 380px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
     }
     
     .flatpickr-calendar .flatpickr-day {
-        height: 45px !important;
-        line-height: 45px !important;
+        height: 44px !important;
+        line-height: 44px !important;
         font-size: 16px !important;
     }
+    
+    .flatpickr-calendar .flatpickr-months {
+        padding: 12px !important;
+    }
+    
+    .flatpickr-calendar .flatpickr-current-month {
+        font-size: 16px !important;
+    }
+}
+
+/* 修正可能的定位問題 */
+.datepicker-readonly .flatpickr-wrapper {
+    position: relative !important;
+    display: block !important;
+}
+
+/* 確保日曆不會被其他元素遮擋 */
+body .flatpickr-calendar.open {
+    z-index: 99999 !important;
 }
 """
 
