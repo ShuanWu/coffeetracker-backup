@@ -62,7 +62,7 @@ body {
     padding-top: 0 !important;
 }
 
-/* 隱藏下拉選單的游標和禁用輸入 */
+/* ===== 下拉選單樣式 ===== */
 .dropdown-readonly input {
     caret-color: transparent !important;
     cursor: pointer !important;
@@ -73,7 +73,6 @@ body {
     caret-color: transparent !important;
 }
 
-/* 防止文字選取 */
 .dropdown-readonly * {
     user-select: none !important;
     -webkit-user-select: none !important;
@@ -81,233 +80,15 @@ body {
     -ms-user-select: none !important;
 }
 
-/* 隱藏日期選擇器的游標和禁用輸入 */
-.datepicker-readonly input {
-    caret-color: transparent !important;
-    cursor: pointer !important;
-    user-select: none !important;
-    background-color: #f9fafb !important; /* 淺灰背景表示不可輸入 */
-}
+/* ===== 日期選擇器樣式 ===== */
 
-.datepicker-readonly input:focus {
-    caret-color: transparent !important;
-    background-color: #f3f4f6 !important;
-}
-
-/* 防止文字選取 */
-.datepicker-readonly * {
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-}
-
-/* 讓日期選擇器的按鈕可以點擊 */
-.datepicker-readonly button {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-}
-
-}
-
-/* 確保日期選擇器容器有相對定位 */
+/* 日期選擇器容器 */
 .datepicker-readonly {
     position: relative !important;
 }
 
-/* ===== 日期選擇器日曆樣式 (內嵌顯示在頁面中) ===== */
-
-/* 日曆顯示在輸入框正下方 */
-.flatpickr-calendar {
-    position: absolute !important;
-    top: calc(100% + 8px) !important;
-    left: 0 !important;
-    right: auto !important;
-    margin: 0 !important;
-    z-index: 99999 !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
-    border-radius: 12px !important;
-    background: white !important;
-    border: 1px solid #e5e7eb !important;
-    min-width: 320px !important;
-}
-
-/* 確保日曆在打開時可見 */
-.flatpickr-calendar.open {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* 強制讓日曆保持顯示 */
-.flatpickr-calendar.inline {
-    position: relative !important;
-    top: 0 !important;
-    display: block !important;
-}
-
-/* 日期選擇器內部元素 */
-.flatpickr-calendar .flatpickr-months {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
-    border-radius: 12px 12px 0 0 !important;
-    padding: 16px !important;
-}
-
-.flatpickr-calendar .flatpickr-current-month {
-    color: white !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
-    padding: 8px 0 !important;
-}
-
-.flatpickr-calendar .flatpickr-prev-month,
-.flatpickr-calendar .flatpickr-next-month {
-    fill: white !important;
-    padding: 8px !important;
-    transition: all 0.2s !important;
-}
-
-.flatpickr-calendar .flatpickr-prev-month:hover,
-.flatpickr-calendar .flatpickr-next-month:hover {
-    fill: #fef3c7 !important;
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-radius: 6px !important;
-}
-
-/* 星期標題 */
-.flatpickr-calendar .flatpickr-weekdays {
-    background: #fff7ed !important;
-    padding: 12px 0 !important;
-}
-
-.flatpickr-calendar .flatpickr-weekday {
-    color: #92400e !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-}
-
-/* 日期容器 */
-.flatpickr-calendar .flatpickr-days {
-    padding: 12px !important;
-}
-
-/* 日期按鈕 */
-.flatpickr-calendar .flatpickr-day {
-    color: #1f2937 !important;
-    font-size: 15px !important;
-    border-radius: 8px !important;
-    height: 40px !important;
-    line-height: 40px !important;
-    margin: 2px !important;
-    transition: all 0.2s !important;
-}
-
-.flatpickr-calendar .flatpickr-day:hover {
-    background: #fed7aa !important;
-    border-color: #fed7aa !important;
-    color: #92400e !important;
-    transform: scale(1.05) !important;
-}
-
-.flatpickr-calendar .flatpickr-day.selected {
-    background: #f97316 !important;
-    border-color: #f97316 !important;
-    color: white !important;
-    font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4) !important;
-}
-
-.flatpickr-calendar .flatpickr-day.today {
-    border: 2px solid #f97316 !important;
-    color: #f97316 !important;
-    font-weight: 600 !important;
-    background: #fff7ed !important;
-}
-
-.flatpickr-calendar .flatpickr-day.today:hover {
-    background: #ffedd5 !important;
-    border-color: #f97316 !important;
-}
-
-.flatpickr-calendar .flatpickr-day.today.selected {
-    background: #f97316 !important;
-    color: white !important;
-    border-color: #f97316 !important;
-}
-
-/* 其他月份的日期 */
-.flatpickr-calendar .flatpickr-day.prevMonthDay,
-.flatpickr-calendar .flatpickr-day.nextMonthDay {
-    color: #d1d5db !important;
-}
-
-.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
-.flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
-    color: #9ca3af !important;
-    background: #f3f4f6 !important;
-}
-
-/* 禁用的日期 */
-.flatpickr-calendar .flatpickr-day.flatpickr-disabled {
-    color: #e5e7eb !important;
-    cursor: not-allowed !important;
-}
-
-.flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover {
-    background: transparent !important;
-    transform: none !important;
-}
-
-/* 月份下拉選單 */
-.flatpickr-calendar .flatpickr-monthDropdown-months {
-    background: white !important;
-    color: #1f2937 !important;
-    border: 1px solid #e5e7eb !important;
-    border-radius: 6px !important;
-    padding: 4px 8px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-
-.flatpickr-calendar .flatpickr-monthDropdown-months:hover {
-    background: #f9fafb !important;
-}
-
-/* 年份輸入 */
-.flatpickr-calendar .numInputWrapper {
-    background: transparent !important;
-}
-
-.flatpickr-calendar .numInputWrapper input {
-    color: white !important;
-    font-weight: 600 !important;
-    background: transparent !important;
-}
-
-.flatpickr-calendar .numInputWrapper:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-radius: 6px !important;
-}
-
-/* 確保日曆在小螢幕上也正常顯示 */
-@media (max-width: 768px) {
-    .flatpickr-calendar {
-        width: calc(100vw - 32px) !important;
-        max-width: 380px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-    }
-    
-    .flatpickr-calendar .flatpickr-day {
-        height: 44px !important;
-        line-height: 44px !important;
-        font-size: 16px !important;
-    }
-}
-/* ===== 手機版日期選擇器完整優化 ===== */
-
-/* 日期選擇器基礎樣式 */
+/* 日期選擇器輸入框基礎樣式 */
+.datepicker-readonly input,
 input[type="date"],
 input[type="datetime-local"] {
     width: 100% !important;
@@ -319,17 +100,48 @@ input[type="datetime-local"] {
     cursor: pointer !important;
     transition: all 0.2s !important;
     color: #1f2937 !important;
+    caret-color: transparent !important;
+    user-select: none !important;
 }
 
+.datepicker-readonly input:focus,
 input[type="date"]:focus,
 input[type="datetime-local"]:focus {
     outline: none !important;
     border-color: #f97316 !important;
     box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
+    caret-color: transparent !important;
 }
 
-/* 手機版特殊優化 */
+/* 防止文字選取 */
+.datepicker-readonly *,
+input[type="date"],
+input[type="datetime-local"] {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+/* 日期選擇器按鈕 */
+.datepicker-readonly button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* 桌面版樣式 */
+@media (min-width: 769px) {
+    .datepicker-readonly input,
+    input[type="date"],
+    input[type="datetime-local"] {
+        padding: 12px 16px !important;
+        min-height: 44px !important;
+    }
+}
+
+/* 手機版優化 */
 @media (max-width: 768px) {
+    .datepicker-readonly input,
     input[type="date"],
     input[type="datetime-local"] {
         min-height: 52px !important;
@@ -339,7 +151,8 @@ input[type="datetime-local"]:focus {
         appearance: none !important;
     }
     
-    /* 添加日曆圖標 */
+    /* 添加自定義日曆圖標 */
+    .datepicker-readonly input,
     input[type="date"],
     input[type="datetime-local"] {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
@@ -348,7 +161,7 @@ input[type="datetime-local"]:focus {
         background-size: 28px 28px !important;
     }
     
-    /* 移除原生圖標 */
+    /* 隱藏原生日曆圖標（但保持可點擊） */
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         position: absolute !important;
@@ -359,6 +172,7 @@ input[type="datetime-local"]:focus {
         cursor: pointer !important;
     }
     
+    /* 移除原生的清除按鈕和旋轉按鈕 */
     input[type="date"]::-webkit-inner-spin-button,
     input[type="date"]::-webkit-clear-button,
     input[type="datetime-local"]::-webkit-inner-spin-button,
@@ -366,25 +180,35 @@ input[type="datetime-local"]:focus {
         display: none !important;
     }
     
-    /* 日期選擇器容器 */
+    /* 日期選擇器容器間距 */
     .date-picker-container {
         position: relative !important;
         margin-bottom: 8px !important;
     }
     
-    /* 提示文字 */
     .date-picker-container .gr-form {
         margin-bottom: 0 !important;
     }
 }
 
-/* 桌面版樣式 */
-@media (min-width: 769px) {
-    input[type="date"],
-    input[type="datetime-local"] {
-        padding: 12px 16px !important;
-        min-height: 44px !important;
-    }
+/* ===== 日期選擇器彈出日曆樣式（原生瀏覽器日曆）===== */
+
+/* Chrome/Edge 日曆樣式 */
+input[type="date"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit {
+    padding: 0 !important;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0 !important;
+}
+
+/* 確保日期選擇器在所有瀏覽器中都能正常顯示 */
+input[type="date"],
+input[type="datetime-local"] {
+    position: relative !important;
+    z-index: 1 !important;
 }
 
 
