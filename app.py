@@ -950,11 +950,9 @@ def get_deposits_display(username):
         
         redeem_info = REDEEM_LINKS.get(deposit['redeemMethod'], {
             'app': '#',
-            'web': '#',
             'name': deposit['redeemMethod']
         })
         app_link = redeem_info['app']
-        web_link = redeem_info['web']
         app_name = redeem_info['name']
         google_maps_link = f"https://www.google.com/maps/search/{deposit['store']}"
         
@@ -980,17 +978,13 @@ def get_deposits_display(username):
                    style="background: #9333ea; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s; box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);">
                     📱 開啟 {app_name} App
                 </a>
-                <a href="{web_link}" target="_blank" 
-                   style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
-                    🌐 網頁版
-                </a>
                 <a href="{google_maps_link}" target="_blank" 
                    style="background: #2563eb; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-block; transition: all 0.2s;">
                     🗺️ 查看商店位置
                 </a>
             </div>
             <div style="padding: 12px; background: #f9fafb; border-radius: 8px; font-size: 12px; color: #6b7280;">
-                💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟手機 App，如果沒有安裝，請點擊「網頁版」
+                💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟對應的手機應用程式
             </div>
         </div>
         """
