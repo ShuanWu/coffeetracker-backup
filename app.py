@@ -1155,21 +1155,38 @@ with gr.Blocks(
                 function initDatePicker() {{
                     const dateInputs = document.querySelectorAll('.datepicker-readonly input');
                     dateInputs.forEach(input => {{
-                        if (input.type !== 'date') {{
+                        if (input.type !== 'date' || !input.dataset.initialized) {{
                             input.type = 'date';
                             input.min = '{today}';
-                            input.value = '{today}';
+                            if (!input.value) {{
+                                input.value = '{today}';
+                            }}
                             input.style.cursor = 'pointer';
+                            input.dataset.initialized = 'true';
                             
-                            // 只在用戶輸入時阻止，不阻止日期選擇器
-                            let isSelectingDate = false;
-                            
-                            input.addEventListener('focus', function() {{
-                                isSelectingDate = true;
-                            }});
-                            
-                            input.addEventListener('blur', function() {{
-                                setTimeout(() => {{ isSelectingDate = false; }}, 100);
+                            // 監聽日期變更事件
+                            input.addEventListener('change', function(e) {{
+                                console.log('Date changed:', this.value);
+                                
+                                // 觸發 Gradio 的 input 事件
+                                const inputEvent = new Event('input', {{ 
+                                    bubbles: true, 
+                                    cancelable: true 
+                                }});
+                                this.dispatchEvent(inputEvent);
+                                
+                                // 觸發 Gradio 的 change 事件
+                                const changeEvent = new Event('change', {{ 
+                                    bubbles: true, 
+                                    cancelable: true 
+                                }});
+                                this.dispatchEvent(changeEvent);
+                                
+                                // 確保 Gradio 接收到值
+                                setTimeout(() => {{
+                                    this.blur();
+                                    this.focus();
+                                }}, 50);
                             }});
                             
                             // 防止鍵盤輸入（但不影響日期選擇器）
@@ -1195,7 +1212,7 @@ with gr.Blocks(
                                 return false;
                             }});
                             
-                            // 防止選取文字（但不影響點擊）
+                            // 防止選取文字
                             input.addEventListener('selectstart', function(e) {{
                                 e.preventDefault();
                                 return false;
@@ -1210,7 +1227,9 @@ with gr.Blocks(
                 setTimeout(initDatePicker, 1000);
                 
                 // 監聽 DOM 變化
-                const observer = new MutationObserver(initDatePicker);
+                const observer = new MutationObserver(function(mutations) {{
+                    initDatePicker();
+                }});
                 observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
