@@ -5,6 +5,8 @@ import os
 import hashlib
 from huggingface_hub import HfApi, hf_hub_download, upload_file
 import secrets
+import threading
+import time
 
 # Hugging Face 設定
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -53,8 +55,17 @@ if not os.path.exists(DATA_DIR):
 # Hugging Face API
 api = HfApi()
 
-# 用於儲存當前 session 的全域變數（簡單方案）
-active_sessions = {}
+# 記憶體快取
+cache = {
+    'users': None,
+    'sessions': {},
+    'deposits': {},
+    'last_sync': {},
+    'loading': set()
+}
+
+# 快取鎖
+cache_lock = threading.Lock()
 
 def download_from_hf(filename):
     """從 Hugging Face Space 下載檔案"""
@@ -64,106 +75,149 @@ def download_from_hf(filename):
                 repo_id=HF_REPO,
                 filename=filename,
                 repo_type="space",
-                token=HF_TOKEN
+                token=HF_TOKEN,
+                force_download=False  # 使用快取
             )
             return local_path
     except Exception as e:
         print(f"下載 {filename} 失敗: {e}")
     return None
 
-def upload_to_hf(filepath):
-    """上傳檔案到 Hugging Face Space"""
-    try:
-        if HF_TOKEN and HF_REPO:
-            upload_file(
-                path_or_fileobj=filepath,
-                path_in_repo=filepath,
-                repo_id=HF_REPO,
-                repo_type="space",
-                token=HF_TOKEN
-            )
-            print(f"✅ 已上傳 {filepath} 到 Hugging Face")
-            return True
-    except Exception as e:
-        print(f"❌ 上傳 {filepath} 失敗: {e}")
-    return False
+def upload_to_hf_async(filepath):
+    """非同步上傳到 Hugging Face"""
+    def upload():
+        try:
+            if HF_TOKEN and HF_REPO:
+                upload_file(
+                    path_or_fileobj=filepath,
+                    path_in_repo=filepath,
+                    repo_id=HF_REPO,
+                    repo_type="space",
+                    token=HF_TOKEN
+                )
+                print(f"✅ 已上傳 {filepath}")
+        except Exception as e:
+            print(f"❌ 上傳 {filepath} 失敗: {e}")
+    
+    thread = threading.Thread(target=upload, daemon=True)
+    thread.start()
 
 def hash_password(password):
     """密碼加密"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_users():
-    """載入使用者資料"""
-    hf_file = download_from_hf(USERS_FILE)
-    if hf_file and os.path.exists(hf_file):
+    """載入使用者資料（優先使用快取）"""
+    with cache_lock:
+        # 如果快取存在且不到 5 分鐘，直接返回
+        if cache['users'] is not None:
+            return cache['users']
+    
+    # 先檢查本地檔案
+    if os.path.exists(USERS_FILE):
         try:
-            with open(hf_file, 'r', encoding='utf-8') as f:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                with open(USERS_FILE, 'w', encoding='utf-8') as local_f:
-                    json.dump(data, local_f, ensure_ascii=False, indent=2)
+                with cache_lock:
+                    cache['users'] = data
                 return data
         except:
             pass
     
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            pass
+    # 再從 HF 下載（背景執行）
+    def load_from_hf():
+        hf_file = download_from_hf(USERS_FILE)
+        if hf_file and os.path.exists(hf_file):
+            try:
+                with open(hf_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    with open(USERS_FILE, 'w', encoding='utf-8') as local_f:
+                        json.dump(data, local_f, ensure_ascii=False, indent=2)
+                    with cache_lock:
+                        cache['users'] = data
+            except:
+                pass
     
-    return {}
+    thread = threading.Thread(target=load_from_hf, daemon=True)
+    thread.start()
+    
+    with cache_lock:
+        if cache['users'] is None:
+            cache['users'] = {}
+        return cache['users']
 
 def save_users(users):
     """儲存使用者資料"""
     try:
+        with cache_lock:
+            cache['users'] = users
+        
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
-        upload_to_hf(USERS_FILE)
+        
+        # 非同步上傳
+        upload_to_hf_async(USERS_FILE)
         return True
     except Exception as e:
         print(f"儲存使用者資料錯誤: {e}")
         return False
 
 def load_sessions():
-    """載入 Session 資料"""
-    hf_file = download_from_hf(SESSIONS_FILE)
-    if hf_file and os.path.exists(hf_file):
-        try:
-            with open(hf_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                with open(SESSIONS_FILE, 'w', encoding='utf-8') as local_f:
-                    json.dump(data, local_f, ensure_ascii=False, indent=2)
-                return data
-        except:
-            pass
+    """載入 Session 資料（優先使用快取）"""
+    with cache_lock:
+        if cache['sessions']:
+            return cache['sessions']
     
     if os.path.exists(SESSIONS_FILE):
         try:
             with open(SESSIONS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                with cache_lock:
+                    cache['sessions'] = data
+                return data
         except:
             pass
+    
+    # 背景載入
+    def load_from_hf():
+        hf_file = download_from_hf(SESSIONS_FILE)
+        if hf_file and os.path.exists(hf_file):
+            try:
+                with open(hf_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    with open(SESSIONS_FILE, 'w', encoding='utf-8') as local_f:
+                        json.dump(data, local_f, ensure_ascii=False, indent=2)
+                    with cache_lock:
+                        cache['sessions'] = data
+            except:
+                pass
+    
+    thread = threading.Thread(target=load_from_hf, daemon=True)
+    thread.start()
     
     return {}
 
 def save_sessions(sessions):
     """儲存 Session 資料"""
     try:
+        with cache_lock:
+            cache['sessions'] = sessions
+        
         with open(SESSIONS_FILE, 'w', encoding='utf-8') as f:
             json.dump(sessions, f, ensure_ascii=False, indent=2)
-        upload_to_hf(SESSIONS_FILE)
+        
+        upload_to_hf_async(SESSIONS_FILE)
         return True
     except:
         return False
 
 def create_session(username, request: gr.Request):
     """創建 Session Token"""
-    # 使用客戶端 IP 和 User-Agent 作為識別
     client_id = f"{request.client.host}_{request.headers.get('user-agent', '')}"
     session_id = hashlib.sha256(client_id.encode()).hexdigest()[:16]
     
-    sessions = load_sessions()
+    with cache_lock:
+        sessions = cache['sessions'] if cache['sessions'] else load_sessions()
     
     # 清理過期的 sessions
     now = datetime.now()
@@ -177,9 +231,6 @@ def create_session(username, request: gr.Request):
     }
     save_sessions(sessions)
     
-    # 同時儲存到記憶體
-    active_sessions[session_id] = username
-    
     print(f"✅ 創建 Session: {session_id} for {username}")
     return session_id
 
@@ -190,13 +241,10 @@ def get_session_id(request: gr.Request):
     return session_id
 
 def validate_session(session_id):
-    """驗證 Session"""
-    # 先檢查記憶體
-    if session_id in active_sessions:
-        return active_sessions[session_id]
+    """驗證 Session（快速檢查）"""
+    with cache_lock:
+        sessions = cache['sessions'] if cache['sessions'] else load_sessions()
     
-    # 再檢查檔案
-    sessions = load_sessions()
     if session_id not in sessions:
         return None
     
@@ -209,19 +257,15 @@ def validate_session(session_id):
             save_sessions(sessions)
             return None
         
-        username = session['username']
-        # 載入到記憶體
-        active_sessions[session_id] = username
-        return username
+        return session['username']
     except:
         return None
 
 def delete_session(session_id):
     """刪除 Session"""
-    if session_id in active_sessions:
-        del active_sessions[session_id]
+    with cache_lock:
+        sessions = cache['sessions'] if cache['sessions'] else load_sessions()
     
-    sessions = load_sessions()
     if session_id in sessions:
         del sessions[session_id]
         save_sessions(sessions)
@@ -233,30 +277,48 @@ def get_user_data_file(username):
     return os.path.join(DATA_DIR, f'{username}.json')
 
 def load_deposits(username):
-    """載入寄杯資料"""
+    """載入寄杯資料（優先使用快取）"""
     if not username:
         return []
     
-    data_file = get_user_data_file(username)
-    hf_path = f"{DATA_DIR}/{username}.json"
+    # 檢查快取
+    with cache_lock:
+        if username in cache['deposits']:
+            return cache['deposits'][username]
     
-    hf_file = download_from_hf(hf_path)
-    if hf_file and os.path.exists(hf_file):
+    data_file = get_user_data_file(username)
+    
+    # 先檢查本地
+    if os.path.exists(data_file):
         try:
-            with open(hf_file, 'r', encoding='utf-8') as f:
+            with open(data_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                with open(data_file, 'w', encoding='utf-8') as local_f:
-                    json.dump(data, local_f, ensure_ascii=False, indent=2)
+                with cache_lock:
+                    cache['deposits'][username] = data
                 return data
         except:
             pass
     
-    if os.path.exists(data_file):
-        try:
-            with open(data_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            pass
+    # 背景載入 HF
+    def load_from_hf():
+        hf_path = f"{DATA_DIR}/{username}.json"
+        hf_file = download_from_hf(hf_path)
+        if hf_file and os.path.exists(hf_file):
+            try:
+                with open(hf_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    with open(data_file, 'w', encoding='utf-8') as local_f:
+                        json.dump(data, local_f, ensure_ascii=False, indent=2)
+                    with cache_lock:
+                        cache['deposits'][username] = data
+            except:
+                pass
+    
+    if username not in cache.get('loading', set()):
+        with cache_lock:
+            cache['loading'].add(username)
+        thread = threading.Thread(target=load_from_hf, daemon=True)
+        thread.start()
     
     return []
 
@@ -267,9 +329,13 @@ def save_deposits(username, deposits):
         return False
     
     try:
+        with cache_lock:
+            cache['deposits'][username] = deposits
+        
         with open(data_file, 'w', encoding='utf-8') as f:
             json.dump(deposits, f, ensure_ascii=False, indent=2)
-        upload_to_hf(data_file)
+        
+        upload_to_hf_async(data_file)
         return True
     except Exception as e:
         print(f"儲存寄杯資料錯誤: {e}")
@@ -303,7 +369,7 @@ def register_user(username, password, confirm_password):
         user_file = get_user_data_file(username)
         with open(user_file, 'w', encoding='utf-8') as f:
             json.dump([], f)
-        upload_to_hf(user_file)
+        upload_to_hf_async(user_file)
         
         return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
     else:
@@ -328,7 +394,7 @@ def login_user(username, password, remember_me, request: gr.Request):
     return f"✅ 歡迎回來，{username}！", gr.update(visible=False), gr.update(visible=True), username
 
 def auto_login(request: gr.Request):
-    """自動登入檢查"""
+    """自動登入檢查（快速）"""
     session_id = get_session_id(request)
     username = validate_session(session_id)
     
@@ -623,6 +689,17 @@ def refresh_display(username):
     """重新整理顯示"""
     return get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
+# 啟動時預載入資料
+def preload_data():
+    """預載入常用資料"""
+    print("🔄 預載入資料中...")
+    load_users()
+    load_sessions()
+    print("✅ 預載入完成")
+
+# 背景預載入
+threading.Thread(target=preload_data, daemon=True).start()
+
 # 建立 Gradio 介面
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
@@ -734,7 +811,7 @@ with gr.Blocks(
     
     # 頁面載入時自動登入
     def on_load(request: gr.Request):
-        """頁面載入時檢查 Session"""
+        """頁面載入時檢查 Session（快速）"""
         user, login_vis, main_vis = auto_login(request)
         if user:
             user_display = f"👤 使用者：**{user}**"
