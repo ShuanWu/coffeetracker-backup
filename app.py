@@ -1132,78 +1132,67 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
+            # 日期選擇器（使用 Gradio 原生組件）
             with gr.Column(visible=True) as date_picker_column:
-                gr.HTML("""
-                <div style="margin: 10px 0;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
-                        📅 到期日
-                    </label>
-                    <input 
-                        type="date" 
-                        id="expiry_date_input_visible"
-                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
-                    />
-                </div>
-                """)
                 expiry_date_input = gr.Textbox(
-                    label="",
-                    visible=False,
-                    elem_id="expiry_date_hidden_sync",
-                    value=""
+                    label="📅 到期日",
+                    placeholder="點擊選擇日期",
+                    type="text",
+                    elem_classes=["datepicker-readonly"],
+                    interactive=True
                 )
+                # 添加 JavaScript 來將普通文字框轉換為日期選擇器
                 gr.HTML("""
                 <script>
-                    function syncDateInput() {
-                        const visibleDate = document.getElementById('expiry_date_input_visible');
-                        const hiddenInput = document.querySelector('#expiry_date_hidden_sync input, #expiry_date_hidden_sync textarea');
+                    function initDatePicker() {
+                        // 找到日期輸入框
+                        const dateInputs = document.querySelectorAll('.datepicker-readonly input, .datepicker-readonly textarea');
                         
-                        if (visibleDate && hiddenInput) {
-                            console.log('日期選擇器已連接');
+                        dateInputs.forEach(function(input) {
+                            if (input.hasAttribute('data-date-initialized')) {
+                                return;
+                            }
+                            input.setAttribute('data-date-initialized', 'true');
                             
-                            // 多種事件監聽確保同步
-                            ['change', 'input', 'blur'].forEach(eventType => {
-                                visibleDate.addEventListener(eventType, function() {
-                                    if (this.value) {
-                                        hiddenInput.value = this.value;
-                                        
-                                        // 觸發多個事件確保 Gradio 接收
-                                        ['input', 'change', 'blur'].forEach(evt => {
-                                            const event = new Event(evt, { bubbles: true, cancelable: true });
-                                            hiddenInput.dispatchEvent(event);
-                                        });
-                                        
-                                        console.log('日期已同步:', this.value);
-                                    }
-                                });
-                            });
+                            // 設置 type 為 date
+                            input.setAttribute('type', 'date');
+                            input.style.cursor = 'pointer';
                             
-                            // 點擊時自動打開日期選擇器
-                            visibleDate.addEventListener('click', function() {
-                                if (this.showPicker) {
-                                    this.showPicker();
-                                }
-                            });
+                            // 設置最小日期為今天
+                            const today = new Date().toISOString().split('T')[0];
+                            input.setAttribute('min', today);
                             
-                            // 定期檢查並同步（備用方案）
-                            setInterval(function() {
-                                if (visibleDate.value && hiddenInput.value !== visibleDate.value) {
-                                    hiddenInput.value = visibleDate.value;
-                                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                }
-                            }, 500);
+                            // 如果沒有值，設置預設值為今天
+                            if (!input.value) {
+                                input.value = today;
+                                // 觸發 change 事件
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
                             
-                        } else {
-                            console.log('等待元素載入...');
-                            setTimeout(syncDateInput, 200);
-                        }
+                            console.log('✅ 日期選擇器初始化完成，預設值:', input.value);
+                        });
                     }
                     
+                    // 頁面載入時初始化
                     if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', syncDateInput);
+                        document.addEventListener('DOMContentLoaded', initDatePicker);
                     } else {
-                        syncDateInput();
+                        initDatePicker();
                     }
+                    
+                    // 監聽 DOM 變化
+                    const observer = new MutationObserver(function(mutations) {
+                        initDatePicker();
+                    });
+                    
+                    observer.observe(document.body, {
+                        childList: true,
+                        subtree: true
+                    });
+                    
+                    // 定期檢查（備用方案）
+                    setInterval(initDatePicker, 1000);
                 </script>
                 """)
 
@@ -1348,11 +1337,11 @@ with gr.Blocks(
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    # item_input.submit(
-    #     fn=add_and_refresh,
-    #     inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
-    #     outputs=[add_status, deposits_display, statistics_display, deposit_selector]
-    # )
+    item_input.submit(
+        fn=add_and_refresh,
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_input_method, expiry_date_input, days_until_expiry],
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
     
     # 事件處理 - 兌換
     def redeem_and_refresh(user, deposit_id):
