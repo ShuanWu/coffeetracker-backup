@@ -1133,46 +1133,29 @@ with gr.Blocks(
                 interactive=True
             )
             
-            # 日期選擇器（預設顯示）- 使用 Textbox 配合 JavaScript
+            # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
             with gr.Column(visible=True) as date_picker_column:
                 expiry_date_input = gr.Textbox(
                     label="📅 到期日",
                     placeholder="請選擇日期",
-                    interactive=True,
-                    elem_id="expiry_date_textbox"
+                    type="text",
+                    elem_id="expiry_date_picker",
+                    interactive=True
                 )
                 gr.HTML("""
                 <script>
-                    function initDateInput() {
-                        // 等待 Gradio 元素載入
-                        setTimeout(function() {
-                            const textboxes = document.querySelectorAll('#expiry_date_textbox input');
-                            textboxes.forEach(input => {
-                                if (input && input.type !== 'date') {
-                                    input.type = 'date';
-                                    input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;';
-                                    
-                                    // 點擊時打開日期選擇器
-                                    input.addEventListener('click', function() {
-                                        if (this.showPicker) {
-                                            this.showPicker();
-                                        }
-                                    });
+                    setTimeout(function() {
+                        const input = document.querySelector('#expiry_date_picker input');
+                        if (input) {
+                            input.type = 'date';
+                            input.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;';
+                            input.addEventListener('click', function() {
+                                if (this.showPicker) {
+                                    this.showPicker();
                                 }
                             });
-                        }, 500);
-                    }
-                    
-                    // 初始化
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', initDateInput);
-                    } else {
-                        initDateInput();
-                    }
-                    
-                    // 監聽 DOM 變化
-                    const observer = new MutationObserver(initDateInput);
-                    observer.observe(document.body, { childList: true, subtree: true });
+                        }
+                    }, 500);
                 </script>
                 """)
             
@@ -1359,4 +1342,3 @@ with gr.Blocks(
 
 if __name__ == "__main__":
     app.launch()
-
