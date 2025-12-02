@@ -1132,7 +1132,7 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器 - 使用 HTML + 按鈕觸發時同步
+            # 日期選擇器 - 最簡單可靠的方案
             with gr.Column(visible=True) as date_picker_column:
                 gr.HTML("""
                 <div style="margin-bottom: 16px;">
@@ -1141,38 +1141,39 @@ with gr.Blocks(
                     </label>
                     <input 
                         type="date" 
-                        id="expiry_date_picker_main"
+                        id="date_picker_input"
                         style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
                     />
                 </div>
+                """)
+                
+                expiry_date_input = gr.Textbox(
+                    label="",
+                    visible=False,
+                    elem_id="date_sync_field"
+                )
+                
+                # 使用更簡單的同步方式 - 直接監聽 HTML input 的變化
+                gr.HTML("""
                 <script>
-                (function() {
-                    function initDatePicker() {
-                        const picker = document.getElementById('expiry_date_picker_main');
-                        if (!picker) {
-                            setTimeout(initDatePicker, 100);
-                            return;
-                        }
-                        
-                        if (picker.hasAttribute('data-initialized')) {
-                            return;
-                        }
-                        picker.setAttribute('data-initialized', 'true');
-                        
-                        // 設置今天為最小日期
-                        const today = new Date().toISOString().split('T')[0];
-                        picker.min = today;
-                        picker.value = today;
-                        
-                        console.log('✅ 日期選擇器已初始化，預設值:', today);
-                    }
+                window.addEventListener('load', function() {
+                    const htmlPicker = document.getElementById('date_picker_input');
+                    const gradioField = document.querySelector('#date_sync_field input, #date_sync_field textarea');
                     
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', initDatePicker);
-                    } else {
-                        initDatePicker();
+                    if (htmlPicker && gradioField) {
+                        // 設置今天為預設值
+                        const today = new Date().toISOString().split('T')[0];
+                        htmlPicker.value = today;
+                        htmlPicker.min = today;
+                        gradioField.value = today;
+                        
+                        // 監聽變化並立即同步
+                        htmlPicker.addEventListener('change', function() {
+                            gradioField.value = this.value;
+                            gradioField.dispatchEvent(new Event('input', { bubbles: true }));
+                        });
                     }
-                })();
+                });
                 </script>
                 """)
                 
