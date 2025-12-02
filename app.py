@@ -47,8 +47,7 @@ REDEEM_LINKS = {
     }
 }
 
-# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
-# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
+# CSS 樣式 + JavaScript - 讓日期選擇器內嵌顯示
 CUSTOM_CSS = """
 /* 隱藏下拉選單的游標和禁用輸入 */
 .dropdown-readonly input {
@@ -100,10 +99,10 @@ CUSTOM_CSS = """
 
 /* ===== 日期選擇器日曆樣式 (內嵌顯示在頁面中) ===== */
 
-/* 日曆顯示在輸入框正下方，不是彈出視窗 */
+/* 日曆顯示在輸入框正下方 */
 .flatpickr-calendar {
     position: absolute !important;
-    top: calc(100% + 4px) !important;
+    top: calc(100% + 8px) !important;
     left: 0 !important;
     right: auto !important;
     margin: 0 !important;
@@ -115,29 +114,18 @@ CUSTOM_CSS = """
     min-width: 320px !important;
 }
 
-/* 確保日曆在打開時可見並內嵌在頁面中 */
+/* 確保日曆在打開時可見 */
 .flatpickr-calendar.open {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    position: absolute !important;
 }
 
-/* 防止日曆使用 inline 模式 */
+/* 強制讓日曆保持顯示 */
 .flatpickr-calendar.inline {
-    position: absolute !important;
-    top: calc(100% + 4px) !important;
-}
-
-/* 日曆箭頭位置調整 */
-.flatpickr-calendar.arrowTop,
-.flatpickr-calendar.arrowBottom {
-    position: absolute !important;
-}
-
-.flatpickr-calendar.arrowTop:before,
-.flatpickr-calendar.arrowTop:after {
-    border-bottom-color: #f97316 !important;
+    position: relative !important;
+    top: 0 !important;
+    display: block !important;
 }
 
 /* 日期選擇器內部元素 */
@@ -252,23 +240,6 @@ CUSTOM_CSS = """
     transform: none !important;
 }
 
-/* 清除和今天按鈕 */
-.flatpickr-calendar .flatpickr-clear,
-.flatpickr-calendar .flatpickr-today {
-    color: #f97316 !important;
-    font-weight: 500 !important;
-    padding: 8px 16px !important;
-    border-radius: 8px !important;
-    font-size: 14px !important;
-    transition: all 0.2s !important;
-}
-
-.flatpickr-calendar .flatpickr-clear:hover,
-.flatpickr-calendar .flatpickr-today:hover {
-    background: #fff7ed !important;
-    color: #ea580c !important;
-}
-
 /* 月份下拉選單 */
 .flatpickr-calendar .flatpickr-monthDropdown-months {
     background: white !important;
@@ -301,18 +272,6 @@ CUSTOM_CSS = """
     border-radius: 6px !important;
 }
 
-/* 年份增減按鈕 */
-.flatpickr-calendar .numInputWrapper .arrowUp,
-.flatpickr-calendar .numInputWrapper .arrowDown {
-    border: none !important;
-}
-
-.flatpickr-calendar .numInputWrapper .arrowUp:after,
-.flatpickr-calendar .numInputWrapper .arrowDown:after {
-    border-bottom-color: white !important;
-    border-top-color: white !important;
-}
-
 /* 確保日曆在小螢幕上也正常顯示 */
 @media (max-width: 768px) {
     .flatpickr-calendar {
@@ -327,26 +286,47 @@ CUSTOM_CSS = """
         line-height: 44px !important;
         font-size: 16px !important;
     }
-    
-    .flatpickr-calendar .flatpickr-months {
-        padding: 12px !important;
-    }
-    
-    .flatpickr-calendar .flatpickr-current-month {
-        font-size: 16px !important;
-    }
 }
 
-/* 修正可能的定位問題 */
-.datepicker-readonly .flatpickr-wrapper {
-    position: relative !important;
-    display: block !important;
-}
-
-/* 確保日曆不會被其他元素遮擋 */
-body .flatpickr-calendar.open {
-    z-index: 99999 !important;
-}
+/* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 監聽所有 datepicker-readonly 元素
+    const observers = [];
+    
+    function initDatePicker() {
+        const dateInputs = document.querySelectorAll('.datepicker-readonly input');
+        
+        dateInputs.forEach(input => {
+            // 點擊輸入框時自動打開日曆
+            input.addEventListener('click', function(e) {
+                // 找到對應的 flatpickr 實例
+                if (this._flatpickr) {
+                    this._flatpickr.open();
+                }
+            });
+            
+            // 防止輸入框被編輯
+            input.addEventListener('keydown', function(e) {
+                e.preventDefault();
+            });
+        });
+    }
+    
+    // 初始化
+    initDatePicker();
+    
+    // 監聽 DOM 變化，處理動態添加的元素
+    const observer = new MutationObserver(function(mutations) {
+        initDatePicker();
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+</script>
 """
 
 # 確保資料目錄存在
@@ -1081,12 +1061,26 @@ with gr.Blocks(
                 )
             
             # 使用 DateTime 元件作為日期選擇器
-            expiry_date_input = gr.DateTime(
-                label="📅 到期日",
-                include_time=False,
-                type="string",
-                elem_classes=["datepicker-readonly"]
-            )
+            expiry_date_input = gr.HTML(
+                value="""
+                <div style="margin: 10px 0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                        📅 到期日
+                    </label>
+                    <input 
+                        type="date" 
+                        id="expiry_date_input"
+                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
+                        required
+                    />
+                </div>
+                <script>
+                    document.getElementById('expiry_date_input').addEventListener('click', function() {
+                        this.showPicker();
+                    });
+                </script>
+                """
+)
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
