@@ -694,9 +694,13 @@ def auto_login(request: gr.Request):
 
 def logout_user(request: gr.Request):
     """使用者登出"""
-    session_id = get_session_id(request)
-    delete_session(session_id)
+    try:
+        session_id = get_session_id(request)
+        delete_session(session_id)
+    except:
+        pass
     return gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
+
 
 def is_expiring_soon(expiry_date_str):
     """檢查是否即將到期（7天內）"""
