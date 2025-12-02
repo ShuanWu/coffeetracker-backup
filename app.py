@@ -3,8 +3,12 @@ import json
 from datetime import datetime, timedelta
 import os
 import hashlib
+from huggingface_hub import HfApi, hf_hub_download, upload_file
+from pathlib import Path
 
-# 資料檔案路徑
+# Hugging Face 設定
+HF_TOKEN = os.getenv("HF_TOKEN")  # 從環境變數讀取
+HF_REPO = os.getenv("SPACE_ID")  # 自動取得 Space ID
 USERS_FILE = 'users.json'
 DATA_DIR = 'user_data'
 
@@ -25,12 +29,12 @@ REDEEM_LINKS = {
         'name': 'Line 禮物'
     },
     '7-11': {
-        'app': 'openpointapp://gofeature?featureId=HOMACB02',
+        'app': 'openpoint://',
         'web': 'https://www.7-11.com.tw/',
         'name': 'OPENPOINT'
     },
     '全家': {
-        'app': 'familymart://action.go/preorder/myproduct',
+        'app': 'fami://',
         'web': 'https://www.family.com.tw/',
         'name': '全家便利商店'
     },
@@ -45,27 +49,137 @@ REDEEM_LINKS = {
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
+# Hugging Face API
+api = HfApi()
+
+def download_from_hf(filename):
+    """從 Hugging Face Space 下載檔案"""
+    try:
+        if HF_TOKEN and HF_REPO:
+            local_path = hf_hub_download(
+                repo_id=HF_REPO,
+                filename=filename,
+                repo_type="space",
+                token=HF_TOKEN
+            )
+            return local_path
+    except Exception as e:
+        print(f"下載 {filename} 失敗: {e}")
+    return None
+
+def upload_to_hf(filepath):
+    """上傳檔案到 Hugging Face Space"""
+    try:
+        if HF_TOKEN and HF_REPO:
+            upload_file(
+                path_or_fileobj=filepath,
+                path_in_repo=filepath,
+                repo_id=HF_REPO,
+                repo_type="space",
+                token=HF_TOKEN
+            )
+            print(f"✅ 已上傳 {filepath} 到 Hugging Face")
+            return True
+    except Exception as e:
+        print(f"❌ 上傳 {filepath} 失敗: {e}")
+    return False
+
 def hash_password(password):
     """密碼加密"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_users():
     """載入使用者資料"""
-    if not os.path.exists(USERS_FILE):
-        return {}
-    try:
-        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-        return {}
+    # 先嘗試從 HF 下載
+    hf_file = download_from_hf(USERS_FILE)
+    if hf_file and os.path.exists(hf_file):
+        try:
+            with open(hf_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # 複製到本地
+                with open(USERS_FILE, 'w', encoding='utf-8') as local_f:
+                    json.dump(data, local_f, ensure_ascii=False, indent=2)
+                return data
+        except:
+            pass
+    
+    # 如果 HF 沒有，檢查本地
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    
+    return {}
 
 def save_users(users):
     """儲存使用者資料"""
     try:
+        # 儲存到本地
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
+        
+        # 上傳到 HF
+        upload_to_hf(USERS_FILE)
         return True
-    except:
+    except Exception as e:
+        print(f"儲存使用者資料錯誤: {e}")
+        return False
+
+def get_user_data_file(username):
+    """取得使用者資料檔案路徑"""
+    if not username:
+        return None
+    return os.path.join(DATA_DIR, f'{username}.json')
+
+def load_deposits(username):
+    """載入寄杯資料"""
+    if not username:
+        return []
+    
+    data_file = get_user_data_file(username)
+    hf_path = f"{DATA_DIR}/{username}.json"
+    
+    # 先嘗試從 HF 下載
+    hf_file = download_from_hf(hf_path)
+    if hf_file and os.path.exists(hf_file):
+        try:
+            with open(hf_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # 複製到本地
+                with open(data_file, 'w', encoding='utf-8') as local_f:
+                    json.dump(data, local_f, ensure_ascii=False, indent=2)
+                return data
+        except:
+            pass
+    
+    # 如果 HF 沒有，檢查本地
+    if os.path.exists(data_file):
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    
+    return []
+
+def save_deposits(username, deposits):
+    """儲存寄杯資料"""
+    data_file = get_user_data_file(username)
+    if not data_file:
+        return False
+    
+    try:
+        # 儲存到本地
+        with open(data_file, 'w', encoding='utf-8') as f:
+            json.dump(deposits, f, ensure_ascii=False, indent=2)
+        
+        # 上傳到 HF
+        upload_to_hf(data_file)
+        return True
+    except Exception as e:
+        print(f"儲存寄杯資料錯誤: {e}")
         return False
 
 def register_user(username, password, confirm_password):
@@ -94,9 +208,11 @@ def register_user(username, password, confirm_password):
     
     if save_users(users):
         # 建立使用者資料檔案
-        user_file = os.path.join(DATA_DIR, f'{username}.json')
+        user_file = get_user_data_file(username)
         with open(user_file, 'w', encoding='utf-8') as f:
             json.dump([], f)
+        upload_to_hf(user_file)
+        
         return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
     else:
         return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False)
@@ -119,37 +235,6 @@ def login_user(username, password):
 def logout_user():
     """使用者登出"""
     return gr.update(visible=True), gr.update(visible=False), None, "", get_deposits_display(None), get_statistics(None), gr.update(choices=[])
-
-def get_user_data_file(username):
-    """取得使用者資料檔案路徑"""
-    if not username:
-        return None
-    return os.path.join(DATA_DIR, f'{username}.json')
-
-def load_deposits(username):
-    """載入寄杯資料"""
-    data_file = get_user_data_file(username)
-    if not data_file or not os.path.exists(data_file):
-        return []
-    try:
-        with open(data_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"載入資料錯誤: {e}")
-        return []
-
-def save_deposits(username, deposits):
-    """儲存寄杯資料"""
-    data_file = get_user_data_file(username)
-    if not data_file:
-        return False
-    try:
-        with open(data_file, 'w', encoding='utf-8') as f:
-            json.dump(deposits, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:
-        print(f"儲存資料錯誤: {e}")
-        return False
 
 def is_expiring_soon(expiry_date_str):
     """檢查是否即將到期（7天內）"""
@@ -192,23 +277,20 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_date):
     except:
         return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    # 處理日期格式 - 支援多種格式
+    # 處理日期格式
     try:
         if isinstance(expiry_date, str):
-            # 移除時間部分
             if 'T' in expiry_date:
                 expiry_date = expiry_date.split('T')[0]
             if ' ' in expiry_date:
                 expiry_date = expiry_date.split(' ')[0]
-            # 驗證日期格式
             datetime.strptime(expiry_date, '%Y-%m-%d')
         elif hasattr(expiry_date, 'strftime'):
-            # 如果是 datetime 物件
             expiry_date = expiry_date.strftime('%Y-%m-%d')
         else:
             return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except Exception as e:
-        print(f"日期處理錯誤: {e}, 輸入值: {expiry_date}, 類型: {type(expiry_date)}")
+        print(f"日期處理錯誤: {e}")
         return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
     deposits = load_deposits(username)
@@ -384,9 +466,6 @@ def get_deposits_display(username):
             <div style="padding: 12px; background: #f9fafb; border-radius: 8px; font-size: 12px; color: #6b7280;">
                 💡 <strong>提示：</strong>點擊「開啟 App」會嘗試開啟手機 App，如果沒有安裝，請點擊「網頁版」
             </div>
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
-                記錄 ID: {deposit['id'][:8]}... | 建立時間: {deposit.get('createdAt', 'N/A')[:10]}
-            </div>
         </div>
         """
     
@@ -443,7 +522,6 @@ with gr.Blocks(
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
 ) as app:
     
-    # 儲存當前使用者
     current_user = gr.State(None)
     
     gr.HTML("""
@@ -455,7 +533,6 @@ with gr.Blocks(
         </div>
     """)
     
-    # 登入/註冊區域
     with gr.Column(visible=True) as login_area:
         with gr.Tabs():
             with gr.Tab("🔐 登入"):
@@ -471,7 +548,6 @@ with gr.Blocks(
                 register_confirm = gr.Textbox(label="確認密碼", type="password", placeholder="再次輸入密碼")
                 register_btn = gr.Button("註冊", variant="primary", size="lg")
     
-    # 主要功能區域（登入後顯示）
     with gr.Column(visible=False) as main_area:
         with gr.Row():
             user_info = gr.Markdown()
@@ -510,16 +586,13 @@ with gr.Blocks(
                     scale=1
                 )
             
-            # 使用 DateTime 組件（月曆模式）
             try:
                 expiry_date_input = gr.DateTime(
                     label="📅 到期日",
                     include_time=False,
                     type="string"
                 )
-            except Exception as e:
-                print(f"DateTime 組件初始化失敗: {e}")
-                # 如果 DateTime 不支援，回退到 Textbox
+            except:
                 expiry_date_input = gr.Textbox(
                     label="📅 到期日",
                     placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
@@ -551,14 +624,13 @@ with gr.Blocks(
         deposits_display = gr.HTML(value=get_deposits_display(None))
         statistics_display = gr.HTML(value=get_statistics(None))
     
-    # 事件處理 - 註冊
+    # 事件處理
     register_btn.click(
         fn=register_user,
         inputs=[register_username, register_password, register_confirm],
         outputs=[register_status, login_area, main_area]
     )
     
-    # 事件處理 - 登入
     login_btn.click(
         fn=login_user,
         inputs=[login_username, login_password],
@@ -569,34 +641,29 @@ with gr.Blocks(
         outputs=[user_info, deposits_display, statistics_display, deposit_selector]
     )
     
-    # 事件處理 - 登出
     logout_btn.click(
         fn=logout_user,
         outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
     )
     
-    # 事件處理 - 新增記錄
     add_btn.click(
         fn=add_deposit,
         inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, expiry_date_input],
         outputs=[add_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    # 事件處理 - 兌換
     redeem_btn.click(
         fn=redeem_one,
         inputs=[current_user, deposit_selector],
         outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    # 事件處理 - 刪除
     delete_btn.click(
         fn=delete_deposit,
         inputs=[current_user, deposit_selector],
         outputs=[action_status, deposits_display, statistics_display, deposit_selector]
     )
     
-    # 事件處理 - 重新整理
     refresh_btn.click(
         fn=refresh_display,
         inputs=[current_user],
