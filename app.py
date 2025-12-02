@@ -1071,11 +1071,10 @@ with gr.Blocks(
                     expiry_date_input = gr.DateTime(
                         label="📅 到期日",
                         value=today,
-                        # include_time=False,
-                        # type="string",
-                        placeholder="選擇日期",
+                        include_time=False,
+                        type="string",
                         info="點擊選擇到期日期",
-                        # elem_id="expiry_date_picker",
+                        elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
                     
