@@ -1130,46 +1130,60 @@ with gr.Blocks(
          
             # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
             with gr.Column(visible=True) as date_picker_column:
-                gr.HTML("""
-                <div style="margin: 10px 0;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
-                        📅 到期日
-                    </label>
-                    <input 
-                        type="date" 
-                        id="expiry_date_input"
-                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;"
-                        required
-                    />
-                </div>
-                """)
                 expiry_date_input = gr.Textbox(
-                    visible=False,
-                    elem_id="expiry_date_hidden"
+                    label="📅 到期日",
+                    placeholder="請選擇日期",
+                    elem_id="expiry_date_hidden",
+                    interactive=True
                 )
                 gr.HTML("""
+                <div id="date_picker_container" style="margin: -50px 0 10px 0;"></div>
                 <script>
-                    (function() {
-                        const dateInput = document.getElementById('expiry_date_input');
+                    (function setupDateInput() {
+                        const container = document.getElementById('date_picker_container');
                         const hiddenInput = document.querySelector('#expiry_date_hidden input, #expiry_date_hidden textarea');
                         
-                        if (dateInput && hiddenInput) {
-                            // 當日期改變時，同步到隱藏的 Gradio 輸入框
-                            dateInput.addEventListener('change', function() {
-                                hiddenInput.value = this.value;
-                                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            });
-                            
-                            // 點擊時自動打開日期選擇器
-                            dateInput.addEventListener('click', function() {
-                                if (this.showPicker) {
-                                    this.showPicker();
-                                }
-                            });
+                        if (!container || !hiddenInput) {
+                            setTimeout(setupDateInput, 100);
+                            return;
+                        }
+                        
+                        // 隱藏原本的 Gradio 輸入框
+                        if (hiddenInput.parentElement) {
+                            hiddenInput.parentElement.style.display = 'none';
+                        }
+                        
+                        // 創建日期選擇器
+                        const dateInput = document.createElement('input');
+                        dateInput.type = 'date';
+                        dateInput.id = 'expiry_date_input';
+                        dateInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white;';
+                        
+                        container.appendChild(dateInput);
+                        
+                        // 同步日期到隱藏輸入框
+                        dateInput.addEventListener('change', function() {
+                            hiddenInput.value = this.value;
+                            const event = new Event('input', { bubbles: true });
+                            hiddenInput.dispatchEvent(event);
+                            console.log('日期已選擇:', this.value);
+                        });
+                        
+                        // 點擊時自動打開日期選擇器
+                        dateInput.addEventListener('click', function() {
+                            if (this.showPicker) {
+                                this.showPicker();
+                            }
+                        });
+                        
+                        // 如果隱藏輸入框有值，同步到日期選擇器
+                        if (hiddenInput.value) {
+                            dateInput.value = hiddenInput.value;
                         }
                     })();
                 </script>
                 """)
+
 
 
 
