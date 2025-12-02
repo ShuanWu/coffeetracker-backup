@@ -47,7 +47,7 @@ REDEEM_LINKS = {
     }
 }
 
-# CSS 樣式 - 禁用下拉選單和日期選擇器輸入，並修正手機版顯示
+# CSS 樣式 - 禁用下拉選單和日期選擇器輸入
 CUSTOM_CSS = """
 /* 隱藏下拉選單的游標和禁用輸入 */
 .dropdown-readonly input {
@@ -93,54 +93,56 @@ CUSTOM_CSS = """
     cursor: pointer !important;
 }
 
-/* 全域 Flatpickr 日期選擇器置中 */
-.flatpickr-calendar.open {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 99999 !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+/* 日期選擇器下拉顯示在輸入框下方 */
+.flatpickr-calendar {
+    position: absolute !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    margin-top: 5px !important;
+    z-index: 9999 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
-/* 日期選擇器背景遮罩 */
-body.flatpickr-open::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 99998 !important;
+/* 確保日期選擇器容器有相對定位 */
+.datepicker-readonly {
+    position: relative !important;
 }
 
-/* 手機版優化 */
-@media (max-width: 768px) {
-    .flatpickr-calendar {
-        width: 90vw !important;
-        max-width: 350px !important;
-    }
-    
-    .flatpickr-months,
-    .flatpickr-weekdays,
-    .flatpickr-days {
-        width: 100% !important;
-    }
-    
-    .flatpickr-day {
-        max-width: calc(100% / 7) !important;
-        height: 45px !important;
-        line-height: 45px !important;
-        font-size: 16px !important;
-    }
-    
-    .flatpickr-current-month {
-        font-size: 18px !important;
-        padding: 10px 0 !important;
-    }
+/* 日期選擇器內部元素寬度調整 */
+.flatpickr-calendar .flatpickr-months,
+.flatpickr-calendar .flatpickr-weekdays,
+.flatpickr-calendar .flatpickr-days {
+    width: 100% !important;
+}
+
+.flatpickr-calendar .flatpickr-innerContainer {
+    width: 100% !important;
+}
+
+/* 日期按鈕大小 */
+.flatpickr-calendar .flatpickr-day {
+    max-width: calc(100% / 7) !important;
+    height: 45px !important;
+    line-height: 45px !important;
+    font-size: 16px !important;
+}
+
+/* 月份標題 */
+.flatpickr-calendar .flatpickr-current-month {
+    font-size: 18px !important;
+    padding: 10px 0 !important;
+}
+
+/* 星期標題 */
+.flatpickr-calendar .flatpickr-weekday {
+    font-size: 14px !important;
 }
 """
+
 
 
 # 確保資料目錄存在
