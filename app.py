@@ -1186,102 +1186,76 @@ with gr.Blocks(
                     elem_id="expiry_date_hidden"
                 )
                 
-                # 同步腳本 - 加強版
+                # 日期選擇器 - 簡化版本
+            with gr.Column(visible=True) as date_picker_column:
+                expiry_date_input = gr.Textbox(
+                    label="📅 到期日",
+                    placeholder="YYYY-MM-DD",
+                    value=datetime.now().strftime('%Y-%m-%d'),
+                    interactive=True,
+                    elem_id="expiry_date_textbox"
+                )
+                
                 gr.HTML("""
                 <script>
-                    (function() {
-                        let syncInterval = null;
+                (function() {
+                    console.log('🚀 開始初始化日期選擇器...');
+                    
+                    function convertToDatePicker() {
+                        // 尋找輸入框
+                        const textbox = document.querySelector('#expiry_date_textbox input') || 
+                                       document.querySelector('#expiry_date_textbox textarea');
                         
-                        function syncDateToGradio() {
-                            const visiblePicker = document.getElementById('expiry_date_picker_visible');
-                            const hiddenInput = document.querySelector('#expiry_date_hidden input, #expiry_date_hidden textarea');
-                            
-                            if (!visiblePicker || !hiddenInput) {
-                                console.log('⏳ 等待元素載入...');
-                                setTimeout(syncDateToGradio, 100);
-                                return;
-                            }
-                            
-                            if (visiblePicker.hasAttribute('data-sync-initialized')) {
-                                return;
-                            }
-                            visiblePicker.setAttribute('data-sync-initialized', 'true');
-                            
-                            console.log('🔧 開始設置同步機制');
-                            
-                            // 強制初始同步（多次嘗試）
-                            function forceSync() {
-                                const dateValue = visiblePicker.value;
-                                console.log('📅 當前日期選擇器值:', dateValue);
-                                
-                                if (dateValue) {
-                                    hiddenInput.value = dateValue;
-                                    // 觸發多種事件
-                                    ['input', 'change', 'blur'].forEach(eventType => {
-                                        const event = new Event(eventType, { bubbles: true, cancelable: true });
-                                        hiddenInput.dispatchEvent(event);
-                                    });
-                                    console.log('✅ 已同步日期到隱藏輸入框:', dateValue);
-                                } else {
-                                    console.warn('⚠️ 日期選擇器值為空');
-                                }
-                            }
-                            
-                            // 立即同步
-                            forceSync();
-                            
-                            // 100ms 後再同步一次（確保 Gradio 已準備好）
-                            setTimeout(forceSync, 100);
-                            setTimeout(forceSync, 500);
-                            
-                            // 監聽變更事件
-                            ['change', 'input', 'blur'].forEach(eventType => {
-                                visiblePicker.addEventListener(eventType, function() {
-                                    console.log(`📅 日期${eventType}事件:`, this.value);
-                                    hiddenInput.value = this.value;
-                                    ['input', 'change'].forEach(evt => {
-                                        hiddenInput.dispatchEvent(new Event(evt, { bubbles: true }));
-                                    });
-                                    console.log('✅ 已同步到隱藏輸入框');
-                                });
-                            });
-                            
-                            // 清除舊的定時器
-                            if (syncInterval) {
-                                clearInterval(syncInterval);
-                            }
-                            
-                            // 持續同步（每 300ms）
-                            syncInterval = setInterval(function() {
-                                if (visiblePicker.value && hiddenInput.value !== visiblePicker.value) {
-                                    console.log('🔄 自動同步:', visiblePicker.value, '→', hiddenInput.value);
-                                    hiddenInput.value = visiblePicker.value;
-                                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                }
-                            }, 300);
-                            
-                            console.log('✅ 日期同步機制已完全啟動');
+                        if (!textbox) {
+                            console.log('⏳ 尋找輸入框中...');
+                            setTimeout(convertToDatePicker, 100);
+                            return;
                         }
                         
-                        if (document.readyState === 'loading') {
-                            document.addEventListener('DOMContentLoaded', syncDateToGradio);
-                        } else {
-                            syncDateToGradio();
+                        if (textbox.hasAttribute('data-converted')) {
+                            console.log('✅ 已經轉換過了');
+                            return;
                         }
                         
-                        // 備用：監聽 DOM 變化
-                        const observer = new MutationObserver(function(mutations) {
-                            const visiblePicker = document.getElementById('expiry_date_picker_visible');
-                            if (visiblePicker && !visiblePicker.hasAttribute('data-sync-initialized')) {
-                                syncDateToGradio();
-                            }
+                        console.log('🔧 找到輸入框，開始轉換為日期選擇器');
+                        textbox.setAttribute('data-converted', 'true');
+                        
+                        // 轉換為日期選擇器
+                        textbox.type = 'date';
+                        textbox.style.cursor = 'pointer';
+                        
+                        // 設置最小日期為今天
+                        const today = new Date().toISOString().split('T')[0];
+                        textbox.min = today;
+                        
+                        // 如果沒有值，設置為今天
+                        if (!textbox.value) {
+                            textbox.value = today;
+                            console.log('📅 設置預設日期:', today);
+                        }
+                        
+                        // 監聽變更
+                        textbox.addEventListener('change', function() {
+                            console.log('📅 日期已變更為:', this.value);
                         });
                         
-                        observer.observe(document.body, {
-                            childList: true,
-                            subtree: true
-                        });
-                    })();
+                        console.log('✅ 日期選擇器轉換完成！當前值:', textbox.value);
+                    }
+                    
+                    // 多種觸發方式
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', convertToDatePicker);
+                    } else {
+                        convertToDatePicker();
+                    }
+                    
+                    // 監聽 DOM 變化
+                    const observer = new MutationObserver(convertToDatePicker);
+                    observer.observe(document.body, { childList: true, subtree: true });
+                    
+                    // 定期檢查
+                    setInterval(convertToDatePicker, 1000);
+                })();
                 </script>
                 """)
 
