@@ -1036,6 +1036,8 @@ with gr.Blocks(
         
         gr.Markdown("---")
         
+        # 在 coffee.py 中，找到「新增寄杯記錄」的區塊，替換成以下代碼：
+
         with gr.Accordion("➕ 新增寄杯記錄", open=True):
             with gr.Row():
                 item_input = gr.Textbox(
@@ -1050,6 +1052,185 @@ with gr.Blocks(
                     precision=0,
                     scale=1
                 )
+            
+            with gr.Row():
+                store_input = gr.Dropdown(
+                    label="🏪 商店名稱", 
+                    choices=STORE_OPTIONS,
+                    value=STORE_OPTIONS[0],
+                    interactive=True,
+                    elem_classes=["dropdown-readonly"],
+                    scale=1
+                )
+                redeem_method_input = gr.Dropdown(
+                    label="📦 兌換途徑", 
+                    choices=REDEEM_METHODS,
+                    value=REDEEM_METHODS[0],
+                    interactive=True,
+                    elem_classes=["dropdown-readonly"],
+                    scale=1
+                )
+            
+            # 新增：到期日設定方式選擇
+            with gr.Row():
+                expiry_mode = gr.Radio(
+                    label="📅 到期日設定方式",
+                    choices=["選擇日期", "幾天後到期"],
+                    value="選擇日期",
+                    interactive=True
+                )
+            
+            # 使用 DateTime 元件作為日期選擇器
+            with gr.Row(visible=True) as date_picker_row:
+                expiry_date_input = gr.DateTime(
+                    label="📅 到期日",
+                    include_time=False,
+                    type="string",
+                    elem_classes=["datepicker-readonly"]
+                )
+            
+            # 新增：天數輸入
+            with gr.Row(visible=False) as days_input_row:
+                days_input = gr.Number(
+                    label="⏰ 幾天後到期",
+                    value=30,
+                    minimum=1,
+                    maximum=365,
+                    precision=0,
+                    info="例如：30 天後到期"
+                )
+                calculated_date_display = gr.Textbox(
+                    label="計算後的到期日",
+                    interactive=False,
+                    placeholder="將自動計算..."
+                )
+            
+            add_status = gr.Markdown()
+            add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
+
+
+# 新增輔助函數：計算天數後的日期
+def calculate_expiry_date(days):
+    """根據天數計算到期日"""
+    try:
+        days = int(days)
+        if days < 1:
+            return ""
+        future_date = datetime.now() + timedelta(days=days)
+        date_str = future_date.strftime('%Y-%m-%d')
+        display_str = future_date.strftime('%Y年%m月%d日')
+        return f"{date_str} ({display_str})"
+    except:
+        return ""
+
+
+# 新增事件處理：切換到期日設定方式
+def toggle_expiry_mode(mode):
+    """切換到期日設定方式"""
+    if mode == "選擇日期":
+        return gr.update(visible=True), gr.update(visible=False)
+    else:
+        return gr.update(visible=False), gr.update(visible=True)
+
+
+# 修改 add_deposit 函數以支援兩種模式
+def add_deposit_with_mode(username, item, quantity, store, redeem_method, expiry_mode, expiry_date, days):
+    """新增寄杯記錄（支援兩種到期日設定方式）"""
+    if not username:
+        return "❌ 請先登入", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    if not all([item, store, redeem_method]):
+        return "❌ 請填寫所有欄位", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    try:
+        quantity = int(quantity)
+        if quantity < 1:
+            return "❌ 數量必須大於 0", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    except:
+        return "❌ 數量格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    # 根據模式計算到期日
+    if expiry_mode == "幾天後到期":
+        try:
+            days = int(days)
+            if days < 1:
+                return "❌ 天數必須大於 0", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+            future_date = datetime.now() + timedelta(days=days)
+            expiry_date = future_date.strftime('%Y-%m-%d')
+        except:
+            return "❌ 天數格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    else:
+        # 使用日期選擇器的日期
+        try:
+            if isinstance(expiry_date, str):
+                if 'T' in expiry_date:
+                    expiry_date = expiry_date.split('T')[0]
+                if ' ' in expiry_date:
+                    expiry_date = expiry_date.split(' ')[0]
+                datetime.strptime(expiry_date, '%Y-%m-%d')
+            elif hasattr(expiry_date, 'strftime'):
+                expiry_date = expiry_date.strftime('%Y-%m-%d')
+            else:
+                return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+        except Exception as e:
+            print(f"日期處理錯誤: {e}")
+            return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    
+    deposits = load_deposits(username)
+    new_deposit = {
+        'id': str(int(datetime.now().timestamp() * 1000)),
+        'item': item.strip(),
+        'quantity': quantity,
+        'store': store,
+        'redeemMethod': redeem_method,
+        'expiryDate': expiry_date,
+        'createdAt': datetime.now().isoformat()
+    }
+    deposits.append(new_deposit)
+    
+    if save_deposits(username, deposits):
+        return "✅ 新增成功！", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+    else:
+        return "❌ 儲存失敗", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+
+
+# 在事件處理區域，新增以下代碼：
+
+    # 事件處理 - 切換到期日模式
+    expiry_mode.change(
+        fn=toggle_expiry_mode,
+        inputs=[expiry_mode],
+        outputs=[date_picker_row, days_input_row]
+    )
+    
+    # 事件處理 - 天數變化時自動計算日期
+    days_input.change(
+        fn=calculate_expiry_date,
+        inputs=[days_input],
+        outputs=[calculated_date_display]
+    )
+    
+    # 修改原本的新增記錄事件處理
+    def add_and_refresh_new(user, item, quantity, store, redeem_method, expiry_mode, expiry_date, days):
+        """新增記錄並刷新顯示"""
+        message, deposits, stats, choices = add_deposit_with_mode(
+            user, item, quantity, store, redeem_method, expiry_mode, expiry_date, days
+        )
+        return message, deposits, stats, choices
+    
+    add_btn.click(
+        fn=add_and_refresh_new,
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input, 
+                expiry_mode, expiry_date_input, days_input],
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
+    
+    item_input.submit(
+        fn=add_and_refresh_new,
+        inputs=[current_user, item_input, quantity_input, store_input, redeem_method_input,
+                expiry_mode, expiry_date_input, days_input],
+        outputs=[add_status, deposits_display, statistics_display, deposit_selector]
+    )
             
             with gr.Row():
                 store_input = gr.Dropdown(
