@@ -678,6 +678,15 @@ def is_expiring_soon(expiry_date_str):
         return 0 <= days_until_expiry <= 7  # ✅ 0 表示今天到期（還可以用）
     except:
         return False
+    
+def is_expiring_today(expiry_date_str):
+    """檢查是否今天到期"""
+    try:
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        return expiry_date == today
+    except:
+        return False
 
 def is_expired(expiry_date_str):
     """檢查是否已過期"""
@@ -809,14 +818,23 @@ def get_deposit_choices(username):
     choices_list = []
     
     for d in deposits:
-        expired_tag = " [已過期]" if is_expired(d['expiryDate']) else ""
-        expiring_tag = " [即將到期]" if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate']) else ""
-        label = f"{d['item']} - {d['store']} ({d['quantity']}杯) - 到期:{format_date(d['expiryDate'])}{expired_tag}{expiring_tag}"
+        # 判斷狀態標籤
+        if is_expired(d['expiryDate']):
+            status_tag = " [已過期]"
+        elif is_expiring_today(d['expiryDate']):
+            status_tag = " [今天到期]"
+        elif is_expiring_soon(d['expiryDate']):
+            status_tag = " [即將到期]"
+        else:
+            status_tag = ""
+        
+        label = f"{d['item']} - {d['store']} ({d['quantity']}杯) - 到期:{format_date(d['expiryDate'])}{status_tag}"
         
         deposit_label_to_id[label] = d['id']
         choices_list.append(label)
     
     return gr.update(choices=choices_list, value=None)
+
 
 def redeem_one(username, deposit_label):
     """兌換一杯"""
@@ -905,20 +923,30 @@ def get_deposits_display(username):
     
     for deposit in deposits:
         expired = is_expired(deposit['expiryDate'])
-        expiring = is_expiring_soon(deposit['expiryDate']) and not expired
+        expiring_today = is_expiring_today(deposit['expiryDate'])
+        expiring_soon = is_expiring_soon(deposit['expiryDate']) and not expired and not expiring_today
         
+        # 根據狀態設置樣式
         if expired:
             card_style = "background: #fef2f2; border: 2px solid #fca5a5;"
             status_text = "（已過期）"
             status_color = "#dc2626"
-        elif expiring:
+            status_emoji = "❌"
+        elif expiring_today:
+            card_style = "background: #fff4ed; border: 2px solid #fb923c;"
+            status_text = "（今天到期）"
+            status_color = "#ea580c"
+            status_emoji = "⚠️"
+        elif expiring_soon:
             card_style = "background: #fefce8; border: 2px solid #fde047;"
             status_text = "（即將到期）"
             status_color = "#ca8a04"
+            status_emoji = "⏰"
         else:
             card_style = "background: white; border: 1px solid #e5e7eb;"
             status_text = ""
             status_color = "#6b7280"
+            status_emoji = ""
         
         redeem_info = REDEEM_LINKS.get(deposit['redeemMethod'], {
             'app': '#',
@@ -941,7 +969,7 @@ def get_deposits_display(username):
                     <div style="margin-bottom: 6px;">📍 <strong>商店：</strong>{deposit['store']}</div>
                     <div style="margin-bottom: 6px;">📦 <strong>兌換途徑：</strong>{deposit['redeemMethod']}</div>
                     <div>📅 <strong>到期日：</strong>{format_date(deposit['expiryDate'])} 
-                        <span style="color: {status_color}; font-weight: 600;">{status_text}</span>
+                        <span style="color: {status_color}; font-weight: 600;">{status_emoji} {status_text}</span>
                     </div>
                 </div>
             </div>
@@ -964,6 +992,7 @@ def get_deposits_display(username):
     html += '</div>'
     return html
 
+
 def get_statistics(username):
     """取得統計資訊"""
     if not username:
@@ -977,12 +1006,13 @@ def get_statistics(username):
     total_cups = sum(d['quantity'] for d in deposits)
     valid_records = len([d for d in deposits if not is_expired(d['expiryDate'])])
     expired_records = len([d for d in deposits if is_expired(d['expiryDate'])])
-    expiring_soon = len([d for d in deposits if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate'])])
+    expiring_today = len([d for d in deposits if is_expiring_today(d['expiryDate'])])
+    expiring_soon = len([d for d in deposits if is_expiring_soon(d['expiryDate']) and not is_expired(d['expiryDate']) and not is_expiring_today(d['expiryDate'])])
     
     html = f"""
     <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 24px;">
         <h3 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 20px;">📊 統計資訊</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 20px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 16px; text-align: center;">
             <div style="padding: 16px; background: #fffbeb; border-radius: 12px;">
                 <p style="font-size: 36px; font-weight: bold; color: #d97706; margin: 0;">{total_cups}</p>
                 <p style="font-size: 14px; color: #6b7280; margin-top: 8px; font-weight: 500;">總杯數</p>
@@ -990,6 +1020,10 @@ def get_statistics(username):
             <div style="padding: 16px; background: #f0fdf4; border-radius: 12px;">
                 <p style="font-size: 36px; font-weight: bold; color: #16a34a; margin: 0;">{valid_records}</p>
                 <p style="font-size: 14px; color: #6b7280; margin-top: 8px; font-weight: 500;">有效記錄</p>
+            </div>
+            <div style="padding: 16px; background: #fff4ed; border-radius: 12px;">
+                <p style="font-size: 36px; font-weight: bold; color: #ea580c; margin: 0;">{expiring_today}</p>
+                <p style="font-size: 14px; color: #6b7280; margin-top: 8px; font-weight: 500;">今天到期</p>
             </div>
             <div style="padding: 16px; background: #fefce8; border-radius: 12px;">
                 <p style="font-size: 36px; font-weight: bold; color: #ca8a04; margin: 0;">{expiring_soon}</p>
@@ -1003,6 +1037,7 @@ def get_statistics(username):
     </div>
     """
     return html
+
 
 def refresh_display(username):
     """重新整理顯示"""
