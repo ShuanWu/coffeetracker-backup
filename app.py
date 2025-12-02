@@ -1133,6 +1133,7 @@ with gr.Blocks(
                 interactive=True
             )
             
+         
             # 日期選擇器（預設顯示）- 保留原始 HTML datepicker
             with gr.Column(visible=True) as date_picker_column:
                 expiry_date_input = gr.Textbox(
@@ -1158,6 +1159,7 @@ with gr.Blocks(
                     }, 500);
                 </script>
                 """)
+
             
             # 天數輸入（預設隱藏）
             with gr.Column(visible=False) as days_input_column:
