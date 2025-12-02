@@ -670,12 +670,12 @@ def logout_user(request: gr.Request):
 
 
 def is_expiring_soon(expiry_date_str):
-    """檢查是否即將到期（7天內）"""
+    """檢查是否即將到期（7天內，包含到期日當天）"""
     try:
-        expiry = datetime.strptime(expiry_date_str, '%Y-%m-%d')
-        today = datetime.now()
-        days_until_expiry = (expiry - today).days
-        return 0 <= days_until_expiry <= 7
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        days_until_expiry = (expiry_date - today).days
+        return 0 <= days_until_expiry <= 7  # ✅ 0 表示今天到期（還可以用）
     except:
         return False
 
@@ -683,7 +683,8 @@ def is_expired(expiry_date_str):
     """檢查是否已過期"""
     try:
         expiry = datetime.strptime(expiry_date_str, '%Y-%m-%d')
-        return expiry < datetime.now()
+        today = datetime.now().date()  # 只取日期
+        return today > expiry_date
     except:
         return False
 
