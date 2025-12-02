@@ -1054,7 +1054,7 @@ threading.Thread(target=preload_data, daemon=True).start()
 
 # 建立 Gradio 介面
 with gr.Blocks(
-    title="☕ 咖啡寄杯記錄",
+    title="咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
     css=CUSTOM_CSS
 ) as app:
