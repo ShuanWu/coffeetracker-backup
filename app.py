@@ -305,6 +305,79 @@ body {
         font-size: 16px !important;
     }
 }
+/* ===== 強制日期選擇器內嵌顯示（手機版優化）===== */
+
+/* 日期選擇器容器 */
+.date-picker-container {
+    position: relative !important;
+}
+
+/* 針對 Gradio DateTime 組件 */
+input[type="date"],
+input[type="datetime-local"] {
+    position: relative !important;
+    width: 100% !important;
+    padding: 12px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    background: white !important;
+    cursor: pointer !important;
+}
+
+/* 手機版優化 */
+@media (max-width: 768px) {
+    /* 讓日期選擇器內嵌顯示 */
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        opacity: 0 !important;
+        cursor: pointer !important;
+    }
+    
+    /* 日期輸入框樣式 */
+    input[type="date"],
+    input[type="datetime-local"] {
+        min-height: 48px !important;
+        font-size: 16px !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+    
+    /* 移除預設的日期選擇器圖標 */
+    input[type="date"]::-webkit-inner-spin-button,
+    input[type="date"]::-webkit-clear-button,
+    input[type="datetime-local"]::-webkit-inner-spin-button,
+    input[type="datetime-local"]::-webkit-clear-button {
+        display: none !important;
+    }
+    
+    /* 添加自定義日曆圖標 */
+    input[type="date"],
+    input[type="datetime-local"] {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 12px center !important;
+        background-size: 24px 24px !important;
+        padding-right: 44px !important;
+    }
+}
+
+/* 桌面版保持原樣 */
+@media (min-width: 769px) {
+    input[type="date"],
+    input[type="datetime-local"] {
+        cursor: pointer !important;
+    }
+}
 
 /* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
 <script>
