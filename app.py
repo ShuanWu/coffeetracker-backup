@@ -47,6 +47,28 @@ REDEEM_LINKS = {
     }
 }
 
+# CSS 樣式 - 禁用下拉選單輸入
+CUSTOM_CSS = """
+/* 隱藏下拉選單的游標和禁用輸入 */
+.dropdown-readonly input {
+    caret-color: transparent !important;
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.dropdown-readonly input:focus {
+    caret-color: transparent !important;
+}
+
+/* 防止文字選取 */
+.dropdown-readonly * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+"""
+
 # 確保資料目錄存在
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -708,6 +730,7 @@ threading.Thread(target=preload_data, daemon=True).start()
 with gr.Blocks(
     title="☕ 咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
+    css=CUSTOM_CSS
 ) as app:
     
     current_user = gr.State(None)
@@ -760,31 +783,28 @@ with gr.Blocks(
                 )
             
             with gr.Row():
-                store_input = gr.Radio(
+                store_input = gr.Dropdown(
                     label="🏪 商店名稱", 
                     choices=STORE_OPTIONS,
                     value=STORE_OPTIONS[0],
+                    interactive=True,
+                    elem_classes=["dropdown-readonly"],
                     scale=1
                 )
-                redeem_method_input = gr.Radio(
+                redeem_method_input = gr.Dropdown(
                     label="📦 兌換途徑", 
                     choices=REDEEM_METHODS,
                     value=REDEEM_METHODS[0],
+                    interactive=True,
+                    elem_classes=["dropdown-readonly"],
                     scale=1
                 )
             
-            try:
-                expiry_date_input = gr.DateTime(
-                    label="📅 到期日",
-                    include_time=False,
-                    type="string"
-                )
-            except:
-                expiry_date_input = gr.Textbox(
-                    label="📅 到期日",
-                    placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
-                    info="請輸入日期，格式為 YYYY-MM-DD"
-                )
+            expiry_date_input = gr.Textbox(
+                label="📅 到期日",
+                placeholder="格式：YYYY-MM-DD (例如：2025-12-31)",
+                info="請輸入日期，格式為 YYYY-MM-DD"
+            )
             
             add_status = gr.Markdown()
             add_btn = gr.Button("💾 儲存記錄", variant="primary", size="lg")
@@ -794,10 +814,12 @@ with gr.Blocks(
         with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
             gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
             action_status = gr.Markdown()
-            deposit_selector = gr.Radio(
+            deposit_selector = gr.Dropdown(
                 label="📋 選擇寄杯記錄",
                 choices=[],
-                value=None
+                value=None,
+                interactive=True,
+                elem_classes=["dropdown-readonly"]
             )
             
             with gr.Row():
