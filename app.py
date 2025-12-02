@@ -1132,41 +1132,41 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器 - 使用 HTML datepicker + Gradio js 參數
+            # 日期選擇器 - 使用 Gradio 原生支援
             with gr.Column(visible=True) as date_picker_column:
-                gr.HTML("""
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
-                        📅 到期日
-                    </label>
-                    <input 
-                        type="date" 
-                        id="html_date_picker"
-                        style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;"
-                    />
-                </div>
-                """)
+                today = datetime.now().strftime('%Y-%m-%d')
                 
                 expiry_date_input = gr.Textbox(
-                    label="",
-                    visible=False,
-                    elem_id="hidden_date_field"
+                    label="📅 到期日",
+                    value=today,
+                    placeholder="選擇日期",
+                    elem_classes=["datepicker-readonly"]
                 )
                 
-                # 初始化日期選擇器
-                gr.HTML("""
+                # 將輸入框轉換為日期選擇器
+                gr.HTML(f"""
                 <script>
-                // 設置日期選擇器的初始值
-                setTimeout(function() {
-                    const picker = document.getElementById('html_date_picker');
-                    if (picker) {
-                        const today = new Date().toISOString().split('T')[0];
-                        picker.value = today;
-                        picker.min = today;
-                    }
-                }, 100);
+                function initDatePicker() {{
+                    const dateInputs = document.querySelectorAll('.datepicker-readonly input');
+                    dateInputs.forEach(input => {{
+                        if (input.type !== 'date') {{
+                            input.type = 'date';
+                            input.min = '{today}';
+                            input.value = '{today}';
+                            input.style.cursor = 'pointer';
+                        }}
+                    }});
+                }}
+                
+                // 初始化
+                setTimeout(initDatePicker, 300);
+                
+                // 監聽 DOM 變化
+                const observer = new MutationObserver(initDatePicker);
+                observer.observe(document.body, {{ childList: true, subtree: true }});
                 </script>
                 """)
+
 
 
             
