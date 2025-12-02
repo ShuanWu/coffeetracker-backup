@@ -22,27 +22,22 @@ REDEEM_METHODS = ['遠傳', 'Line禮物', '7-11', '全家', '星巴克']
 REDEEM_LINKS = {
     '遠傳': {
         'app': 'fetnet://',
-        'web': 'https://www.fetnet.net/content/cbu/tw/index.html',
         'name': '遠傳心生活'
     },
     'Line禮物': {
         'app': 'https://line.me/R/shop/gift/category/coffee',
-        'web': 'https://gift.line.me/category/coffee',
         'name': 'Line 禮物'
     },
     '7-11': {
-        'app': 'openpoint://',
-        'web': 'https://www.7-11.com.tw/',
+        'app': 'openpointapp://gofeature?featureId=HOMACB02',
         'name': 'OPENPOINT'
     },
     '全家': {
-        'app': 'fami://',
-        'web': 'https://www.family.com.tw/',
+        'app': 'familymart://action.go/preorder/myproduct',
         'name': '全家便利商店'
     },
     '星巴克': {
         'app': 'starbucks://',
-        'web': 'https://www.starbucks.com.tw/',
         'name': '星巴克'
     }
 }
@@ -1012,9 +1007,9 @@ with gr.Blocks(
     gr.HTML("""
         <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
             <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 0;">
-                咖啡寄杯記錄系統
+                ☕咖啡寄杯記錄系統
             </h1>
-            <p style="color: #6b7280; margin-top: 8px; font-size: 14px;">管理你的咖啡寄杯，不怕忘記兌換 ☕✨</p>
+            <p style="color: #6b7280; margin-top: 8px; font-size: 14px;">管理你的咖啡寄杯，不怕忘記兌換</p>
         </div>
     """)
     
