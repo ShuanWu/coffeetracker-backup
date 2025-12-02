@@ -386,19 +386,7 @@ input[type="datetime-local"]:focus {
         min-height: 44px !important;
     }
 }
-/* 隱藏 DateTime 組件的第二個輸入框（時間） */
-#expiry_date_picker input:nth-child(2),
-#expiry_date_picker input[type="time"],
-.date-picker-container input:nth-child(2),
-.date-picker-container input[type="time"] {
-    display: none !important;
-}
 
-/* 確保日期輸入框佔滿寬度 */
-#expiry_date_picker input:first-child,
-.date-picker-container input:first-child {
-    width: 100% !important;
-}
 
 /* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
 <script>
@@ -1230,45 +1218,51 @@ with gr.Blocks(
                     interactive=True
                 )
 
-                # 日期選擇器 - 使用 DateTime 但隱藏時間
+                # 日期選擇器 - 使用 Textbox（避免雙輸入框問題）
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
                     
-                    expiry_date_input = gr.DateTime(
+                    expiry_date_input = gr.Textbox(
                         label="📅 到期日",
                         value=today,
-                        include_time=False,
-                        type="string",
-                        info="點擊選擇到期日期",
+                        placeholder="選擇日期",
                         elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
                     
-                    # 隱藏時間輸入框
-                    gr.HTML("""
+                    # 轉換為日期選擇器
+                    gr.HTML(f"""
                     <script>
                     (function() {{
-                        function hideTimeInput() {{
-                            const container = document.querySelector('#expiry_date_picker, .date-picker-container');
-                            if (container) {{
-                                const inputs = container.querySelectorAll('input');
-                                inputs.forEach((input, index) => {{
-                                    // 隱藏第二個輸入框（時間）
-                                    if (index > 0 || input.type === 'time') {{
-                                        input.style.display = 'none';
-                                        input.parentElement && (input.parentElement.style.display = 'none');
+                        function setupDatePicker() {{
+                            const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
+                            
+                            if (input && input.type !== 'date') {{
+                                input.type = 'date';
+                                input.min = '{today}';
+                                input.value = '{today}';
+                                
+                                console.log('✅ 日期選擇器已設置');
+                                
+                                // 防止手動輸入
+                                input.addEventListener('keydown', function(e) {{
+                                    if (e.key !== 'Tab' && e.key !== 'Escape') {{
+                                        e.preventDefault();
                                     }}
                                 }});
-                                console.log('✅ 已隱藏時間輸入框');
+                                
+                                input.addEventListener('paste', function(e) {{
+                                    e.preventDefault();
+                                }});
                             }}
                         }}
                         
-                        setTimeout(hideTimeInput, 100);
-                        setTimeout(hideTimeInput, 500);
-                        setTimeout(hideTimeInput, 1000);
+                        setTimeout(setupDatePicker, 100);
+                        setTimeout(setupDatePicker, 500);
+                        setTimeout(setupDatePicker, 1000);
                         
-                        new MutationObserver(hideTimeInput).observe(document.body, {{
+                        new MutationObserver(setupDatePicker).observe(document.body, {{
                             childList: true,
                             subtree: true
                         }});
