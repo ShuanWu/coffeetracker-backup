@@ -1137,95 +1137,89 @@ with gr.Blocks(
             )
             
          
-            # 日期選擇器 - 只能點擊選擇，不能手動輸入
+            # 日期選擇器 - 確保顯示版本
             with gr.Column(visible=True) as date_picker_column:
                 today = datetime.now().strftime('%Y-%m-%d')
                 
                 expiry_date_input = gr.Textbox(
                     label="📅 到期日",
                     value=today,
-                    placeholder="點擊選擇日期",
-                    elem_classes=["datepicker-readonly"],
-                    interactive=True
+                    elem_classes=["datepicker-readonly"]
                 )
                 
-                # 將輸入框轉換為日期選擇器
                 gr.HTML(f"""
                 <script>
-                (function() {{
-                    let initialized = false;
+                // 立即執行函數
+                (function initDatePickerImmediately() {{
+                    console.log('開始初始化日期選擇器...');
                     
-                    function initDatePicker() {{
+                    function setupDatePicker() {{
+                        // 找到所有 datepicker-readonly 類別的容器
                         const containers = document.querySelectorAll('.datepicker-readonly');
+                        console.log('找到容器數量:', containers.length);
                         
-                        containers.forEach(container => {{
-                            const input = container.querySelector('input');
+                        containers.forEach((container, index) => {{
+                            const input = container.querySelector('input, textarea');
+                            console.log('容器', index, '找到的輸入框:', input);
                             
-                            if (input && !input.dataset.dateInit) {{
-                                // 標記已初始化
-                                input.dataset.dateInit = 'true';
+                            if (input) {{
+                                console.log('輸入框當前類型:', input.type);
                                 
-                                // 設置為日期類型
+                                // 強制設置為日期類型
+                                input.setAttribute('type', 'date');
                                 input.type = 'date';
                                 input.min = '{today}';
-                                input.value = '{today}';
+                                
+                                if (!input.value || input.value === '') {{
+                                    input.value = '{today}';
+                                }}
+                                
                                 input.style.cursor = 'pointer';
                                 
-                                console.log('Date picker initialized with value:', input.value);
+                                console.log('設置後的類型:', input.type);
+                                console.log('設置後的值:', input.value);
                                 
-                                // 監聽日期變更
-                                input.addEventListener('change', function() {{
-                                    console.log('Date changed to:', this.value);
-                                    
-                                    // 觸發 input 事件讓 Gradio 知道值已改變
-                                    const event = new Event('input', {{ bubbles: true }});
-                                    this.dispatchEvent(event);
-                                }});
-                                
-                                // 防止鍵盤輸入（允許 Tab 和 Escape）
-                                input.addEventListener('keydown', function(e) {{
+                                // 防止手動輸入
+                                input.onkeydown = function(e) {{
                                     if (e.key !== 'Tab' && e.key !== 'Escape') {{
                                         e.preventDefault();
+                                        return false;
                                     }}
-                                }});
+                                }};
                                 
-                                // 防止貼上
-                                input.addEventListener('paste', function(e) {{
+                                input.onpaste = function(e) {{
                                     e.preventDefault();
-                                }});
-                                
-                                // 防止文字選取
-                                input.addEventListener('selectstart', function(e) {{
-                                    e.preventDefault();
-                                }});
+                                    return false;
+                                }};
                             }}
                         }});
                     }}
                     
-                    // 初始化
-                    if (document.readyState === 'loading') {{
-                        document.addEventListener('DOMContentLoaded', initDatePicker);
-                    }} else {{
-                        initDatePicker();
-                    }}
-                    
-                    // 延遲初始化（確保 Gradio 完全載入）
-                    setTimeout(initDatePicker, 300);
-                    setTimeout(initDatePicker, 800);
-                    setTimeout(initDatePicker, 1500);
+                    // 多次嘗試初始化
+                    setupDatePicker();
+                    setTimeout(setupDatePicker, 100);
+                    setTimeout(setupDatePicker, 300);
+                    setTimeout(setupDatePicker, 500);
+                    setTimeout(setupDatePicker, 1000);
+                    setTimeout(setupDatePicker, 2000);
                     
                     // 監聽 DOM 變化
                     const observer = new MutationObserver(function(mutations) {{
-                        initDatePicker();
+                        setupDatePicker();
                     }});
                     
                     observer.observe(document.body, {{
                         childList: true,
-                        subtree: true
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['class']
                     }});
+                    
+                    console.log('日期選擇器初始化完成');
                 }})();
                 </script>
                 """)
+
 
 
 
