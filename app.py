@@ -231,41 +231,6 @@ input[type="datetime-local"]:hover {
     box-shadow: 0 2px 8px rgba(249, 115, 22, 0.1) !important;
 }
 
-/* ===== 隱藏 DateTime 組件的時間輸入框 ===== */
-
-/* 隱藏時間輸入框 */
-#expiry_date_picker .time,
-#expiry_date_picker input.time,
-.date-picker-container .time,
-.date-picker-container input.time {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-}
-
-/* 隱藏日曆按鈕（使用原生日期選擇器） */
-#expiry_date_picker button.calendar,
-.date-picker-container button.calendar {
-    display: none !important;
-}
-
-/* 確保日期輸入框佔滿寬度 */
-#expiry_date_picker .datetime,
-#expiry_date_picker input.datetime,
-.date-picker-container .datetime,
-.date-picker-container input.datetime {
-    width: 100% !important;
-    flex: 1 !important;
-}
-
-/* timebox 容器樣式調整 */
-#expiry_date_picker .timebox,
-.date-picker-container .timebox {
-    display: flex !important;
-    gap: 0 !important;
-}
 
 
 /* JavaScript 初始化 - 點擊輸入框時自動打開日曆 */
@@ -1098,58 +1063,65 @@ with gr.Blocks(
                     interactive=True
                 )
 
-               # 日期選擇器 - 使用 Textbox（避免雙輸入框）
+               # 保留 gr.DateTime 但隱藏時間輸入框
                 with gr.Column(visible=True) as date_picker_column:
                     from datetime import datetime
                     today = datetime.now().strftime('%Y-%m-%d')
                     
-                    expiry_date_input = gr.Textbox(
+                    expiry_date_input = gr.DateTime(
                         label="📅 到期日",
                         value=today,
-                        placeholder="選擇日期",
+                        include_time=False,
+                        type="string",
                         info="點擊選擇到期日期",
                         elem_id="expiry_date_picker",
                         elem_classes=["date-picker-container"]
                     )
                     
-                    # 轉換為日期選擇器
-                    gr.HTML(f"""
+                    # 強制隱藏時間輸入框
+                    gr.HTML("""
                     <script>
-                    (function() {{
-                        function setupDatePicker() {{
-                            const input = document.querySelector('#expiry_date_picker input, #expiry_date_picker textarea');
-                            
-                            if (input && input.type !== 'date') {{
-                                input.type = 'date';
-                                input.min = '{today}';
-                                input.value = '{today}';
+                    (function() {
+                        function hideTimeInput() {
+                            const container = document.querySelector('#expiry_date_picker');
+                            if (container) {
+                                // 隱藏時間輸入框
+                                const timeInput = container.querySelector('.time, input.time');
+                                if (timeInput) {
+                                    timeInput.style.display = 'none';
+                                    timeInput.style.width = '0';
+                                    timeInput.style.height = '0';
+                                    timeInput.style.opacity = '0';
+                                    timeInput.style.visibility = 'hidden';
+                                    console.log('✅ 已隱藏時間輸入框');
+                                }
                                 
-                                console.log('✅ 日期選擇器已設置，類型:', input.type, '值:', input.value);
+                                // 隱藏日曆按鈕
+                                const calendarBtn = container.querySelector('button.calendar');
+                                if (calendarBtn) {
+                                    calendarBtn.style.display = 'none';
+                                    console.log('✅ 已隱藏日曆按鈕');
+                                }
                                 
-                                // 防止手動輸入
-                                input.addEventListener('keydown', function(e) {{
-                                    if (e.key !== 'Tab' && e.key !== 'Escape') {{
-                                        e.preventDefault();
-                                    }}
-                                }});
-                                
-                                input.addEventListener('paste', function(e) {{
-                                    e.preventDefault();
-                                }});
-                            }}
-                        }}
+                                // 確保日期輸入框佔滿寬度
+                                const dateInput = container.querySelector('.datetime, input.datetime, input[type="date"]');
+                                if (dateInput) {
+                                    dateInput.style.width = '100%';
+                                    dateInput.style.flex = '1';
+                                    console.log('✅ 日期輸入框已調整');
+                                }
+                            }
+                        }
                         
-                        // 多次嘗試設置
-                        setTimeout(setupDatePicker, 100);
-                        setTimeout(setupDatePicker, 500);
-                        setTimeout(setupDatePicker, 1000);
+                        setTimeout(hideTimeInput, 100);
+                        setTimeout(hideTimeInput, 500);
+                        setTimeout(hideTimeInput, 1000);
                         
-                        // 監聽 DOM 變化
-                        new MutationObserver(setupDatePicker).observe(document.body, {{
+                        new MutationObserver(hideTimeInput).observe(document.body, {
                             childList: true,
                             subtree: true
-                        }});
-                    }})();
+                        });
+                    })();
                     </script>
                     """)
 
