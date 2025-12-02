@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "1764636344929",
+    "item": "拿鐵",
+    "quantity": 1,
+    "store": "全家",
+    "redeemMethod": "Line禮物",
+    "expiryDate": "2025-12-11",
+    "createdAt": "2025-12-02T01:45:44.929261"
+  }
+]
