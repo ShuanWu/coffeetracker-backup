@@ -1,7 +1,5 @@
 import gradio as gr
 import hashlib
-import json
-import os
 from datetime import datetime, timedelta
 import config
 import database
@@ -15,21 +13,19 @@ def hash_password(password):
 
 def create_session(username, request: gr.Request):
     """創建 Session Token"""
+    # 嘗試清理過期 Session
+    try:
+        database.cleanup_expired_sessions()
+    except:
+        pass
+
     client_id = f"{request.client.host}_{request.headers.get('user-agent', '')}"
     session_id = hashlib.sha256(client_id.encode()).hexdigest()[:16]
     
-    sessions = database.load_sessions()
+    created_at = datetime.now().isoformat()
+    expires_at = (datetime.now() + timedelta(days=30)).isoformat()
     
-    now = datetime.now()
-    sessions = {k: v for k, v in sessions.items() 
-                if datetime.fromisoformat(v['expires_at']) > now}
-    
-    sessions[session_id] = {
-        'username': username,
-        'created_at': datetime.now().isoformat(),
-        'expires_at': (datetime.now() + timedelta(days=30)).isoformat()
-    }
-    database.save_sessions(sessions)
+    database.save_session(session_id, username, created_at, expires_at)
     
     print(f"✅ 創建 Session: {session_id} for {username}")
     return session_id
@@ -41,31 +37,24 @@ def get_session_id(request: gr.Request):
     return session_id
 
 def validate_session(session_id):
-    """驗證 Session（快速檢查）"""
-    sessions = database.load_sessions()
+    """驗證 Session"""
+    session = database.get_session(session_id)
     
-    if session_id not in sessions:
+    if not session:
         return None
     
-    session = sessions[session_id]
     try:
         expires_at = datetime.fromisoformat(session['expires_at'])
-        
         if datetime.now() > expires_at:
-            del sessions[session_id]
-            database.save_sessions(sessions)
+            database.delete_session(session_id)
             return None
-        
         return session['username']
     except:
         return None
 
 def delete_session(session_id):
     """刪除 Session"""
-    sessions = database.load_sessions()
-    if session_id in sessions:
-        del sessions[session_id]
-        database.save_sessions(sessions)
+    database.delete_session(session_id)
 
 def register_user(username, password, confirm_password):
     """註冊新使用者"""
@@ -81,22 +70,15 @@ def register_user(username, password, confirm_password):
     if password != confirm_password:
         return "❌ 兩次密碼輸入不一致", gr.update(visible=True), gr.update(visible=False)
     
-    users = database.load_users()
-    
-    if username in users:
+    # 檢查使用者是否存在
+    if database.get_user(username):
         return "❌ 使用者名稱已存在", gr.update(visible=True), gr.update(visible=False)
     
-    users[username] = {
-        'password': hash_password(password),
-        'created_at': datetime.now().isoformat()
-    }
+    # 建立使用者
+    created_at = datetime.now().isoformat()
+    hashed_pw = hash_password(password)
     
-    if database.save_users(users):
-        user_file = database.get_user_data_file(username)
-        with open(user_file, 'w', encoding='utf-8') as f:
-            json.dump([], f)
-        database.upload_to_hf_async(user_file)
-        
+    if database.create_user(username, hashed_pw, created_at):
         return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
     else:
         return "❌ 註冊失敗，請稍後再試", gr.update(visible=True), gr.update(visible=False)
@@ -106,12 +88,12 @@ def login_user(username, password, remember_me, request: gr.Request):
     if not username or not password:
         return "❌ 請填寫使用者名稱和密碼", gr.update(visible=True), gr.update(visible=False), None
     
-    users = database.load_users()
+    user_data = database.get_user(username)
     
-    if username not in users:
+    if not user_data:
         return "❌ 使用者不存在", gr.update(visible=True), gr.update(visible=False), None
     
-    if users[username]['password'] != hash_password(password):
+    if user_data['password_hash'] != hash_password(password):
         return "❌ 密碼錯誤", gr.update(visible=True), gr.update(visible=False), None
     
     if remember_me:
@@ -145,7 +127,7 @@ def is_expiring_soon(expiry_date_str):
         expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
         today = datetime.now().date()
         days_until_expiry = (expiry_date - today).days
-        return 0 <= days_until_expiry <= 7  # ✅ 0 表示今天到期（還可以用）
+        return 0 <= days_until_expiry <= 7
     except:
         return False
     
@@ -162,7 +144,7 @@ def is_expired(expiry_date_str):
     """檢查是否已過期"""
     try:
         expiry = datetime.strptime(expiry_date_str, '%Y-%m-%d')
-        today = datetime.now().date()  # 只取日期
+        today = datetime.now().date()
         return today > expiry.date()
     except:
         return False
@@ -213,7 +195,7 @@ def get_deposits_display(username):
         </div>
         """
     
-    deposits = database.load_deposits(username)
+    deposits = database.get_user_deposits(username)
     
     if not deposits:
         return """
@@ -304,7 +286,7 @@ def get_statistics(username):
     if not username:
         return ""
     
-    deposits = database.load_deposits(username)
+    deposits = database.get_user_deposits(username)
     
     if not deposits:
         return ""
@@ -349,7 +331,7 @@ def get_deposit_choices(username):
     if not username:
         return gr.update(choices=[], value=None)
     
-    deposits = database.load_deposits(username)
+    deposits = database.get_user_deposits(username)
     if not deposits:
         return gr.update(choices=[], value=None)
     
@@ -406,28 +388,20 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
     # 驗證並清理日期格式
     try:
         if isinstance(final_expiry_date, str):
-            # 移除可能的空白和特殊字符
             final_expiry_date = final_expiry_date.strip()
-            
-            # 處理各種可能的日期格式
-            if 'T' in final_expiry_date:
-                final_expiry_date = final_expiry_date.split('T')[0]
-            if ' ' in final_expiry_date:
-                final_expiry_date = final_expiry_date.split(' ')[0]
-            
-            # 驗證日期格式
+            if 'T' in final_expiry_date: final_expiry_date = final_expiry_date.split('T')[0]
+            if ' ' in final_expiry_date: final_expiry_date = final_expiry_date.split(' ')[0]
             datetime.strptime(final_expiry_date, '%Y-%m-%d')
         elif hasattr(final_expiry_date, 'strftime'):
             final_expiry_date = final_expiry_date.strftime('%Y-%m-%d')
         else:
             return "❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     except Exception as e:
-        print(f"日期處理錯誤: {e}, 收到的日期: {final_expiry_date}")
-        return f"❌ 日期格式錯誤（請確認已選擇日期）", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
+        return f"❌ 日期格式錯誤", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = database.load_deposits(username)
     new_deposit = {
         'id': str(int(datetime.now().timestamp() * 1000)),
+        'username': username,
         'item': item.strip(),
         'quantity': quantity,
         'store': store,
@@ -435,9 +409,8 @@ def add_deposit(username, item, quantity, store, redeem_method, expiry_method, e
         'expiryDate': final_expiry_date,
         'createdAt': datetime.now().isoformat()
     }
-    deposits.append(new_deposit)
     
-    if database.save_deposits(username, deposits):
+    if database.add_deposit(new_deposit):
         return "✅ 新增成功！", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     else:
         return "❌ 儲存失敗", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
@@ -454,24 +427,18 @@ def redeem_one(username, deposit_label):
     if not deposit_id:
         return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = database.load_deposits(username)
-    updated = False
-    deposit_name = ""
+    deposits = database.get_user_deposits(username)
+    target_deposit = next((d for d in deposits if d['id'] == deposit_id), None)
     
-    for i, deposit in enumerate(deposits):
-        if deposit['id'] == deposit_id:
-            deposit_name = deposit['item']
-            if deposit['quantity'] > 1:
-                deposits[i]['quantity'] -= 1
-                message = f"✅ 已兌換一杯 {deposit_name}，剩餘 {deposits[i]['quantity']} 杯"
-            else:
-                deposits = [d for d in deposits if d['id'] != deposit_id]
-                message = f"✅ 已兌換最後一杯 {deposit_name}，記錄已刪除"
-            updated = True
-            break
-    
-    if updated:
-        database.save_deposits(username, deposits)
+    if target_deposit:
+        if target_deposit['quantity'] > 1:
+            new_qty = target_deposit['quantity'] - 1
+            database.update_deposit_quantity(deposit_id, new_qty)
+            message = f"✅ 已兌換一杯 {target_deposit['item']}，剩餘 {new_qty} 杯"
+        else:
+            database.delete_deposit(deposit_id)
+            message = f"✅ 已兌換最後一杯 {target_deposit['item']}，記錄已刪除"
+        
         return message, get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     else:
         return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
@@ -488,16 +455,14 @@ def delete_deposit(username, deposit_label):
     if not deposit_id:
         return "❌ 找不到該記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
     
-    deposits = database.load_deposits(username)
+    deposits = database.get_user_deposits(username)
     deposit_name = ""
-    
     for d in deposits:
         if d['id'] == deposit_id:
             deposit_name = d['item']
             break
-    
-    deposits = [d for d in deposits if d['id'] != deposit_id]
-    database.save_deposits(username, deposits)
+            
+    database.delete_deposit(deposit_id)
     
     return f"✅ 已刪除 {deposit_name} 的記錄", get_deposits_display(username), get_statistics(username), get_deposit_choices(username)
 
