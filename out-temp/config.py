@@ -7,7 +7,7 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 HF_REPO = os.getenv("SPACE_ID")  # 這是程式碼所在的 Space
 # [新增] 資料儲存專用的 Dataset ID
 DATA_REPO = "ShuanWu/coffee-data"  # 例如: "ShihHsuan/coffee-data"
-
+ADMIN_USERS = ["ShuanWu","admin","Amywu1030"]
 # 檔案路徑設定
 # [修改] 統一將所有資料放在 data 資料夾下，方便同步
 DATA_DIR = 'data' 
