@@ -1,21 +1,33 @@
+# app.py - 重構版本
+
 import gradio as gr
-import threading
-import config
-import database
-import logic
 from datetime import datetime
-database.load_users()
+
+# 導入配置
+from src.config import ui_config
+
+# 導入服務
+from src.services import auth, deposit_service, storage
+
+# 導入 UI 組件
+from src.ui import components
+
+# 導入工具函數
+from src.utils import date_utils
+
+# 初始化：載入用戶資料
+storage.load_users()
 
 # 建立 Gradio 介面
 with gr.Blocks(
     title="咖啡寄杯記錄",
     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
-    css=config.CUSTOM_CSS
+    css=ui_config.CUSTOM_CSS
 ) as app:
     
     current_user = gr.State(None)
     
-    gr.HTML(config.JS_INIT_SCRIPT)
+    gr.HTML(ui_config.JS_INIT_SCRIPT)
     
     gr.HTML("""
         <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px;">
@@ -26,9 +38,10 @@ with gr.Blocks(
         </div>
     """)
     
+    # === 登入/註冊區域 ===
     with gr.Column(visible=True) as login_area:
         with gr.Tabs():
-            with gr.Tab("🔐 登入"):
+            with gr.Tab("🔓 登入"):
                 login_status = gr.Markdown()
                 login_username = gr.Textbox(label="使用者名稱", placeholder="請輸入使用者名稱")
                 login_password = gr.Textbox(label="密碼", type="password", placeholder="請輸入密碼")
@@ -42,6 +55,7 @@ with gr.Blocks(
                 register_confirm = gr.Textbox(label="確認密碼", type="password", placeholder="再次輸入密碼")
                 register_btn = gr.Button("註冊", variant="primary", size="lg")
     
+    # === 主功能區域 ===
     with gr.Column(visible=False) as main_area:
         with gr.Row():
             user_info = gr.Markdown()
@@ -49,6 +63,7 @@ with gr.Blocks(
         
         gr.Markdown("---")
         
+        # 新增寄杯記錄
         with gr.Accordion("➕ 新增寄杯記錄", open=True):
             with gr.Row():
                 item_input = gr.Textbox(
@@ -67,16 +82,16 @@ with gr.Blocks(
             with gr.Row():
                 store_input = gr.Dropdown(
                     label="🏪 商店名稱", 
-                    choices=config.STORE_OPTIONS,
-                    value=config.STORE_OPTIONS[0],
+                    choices=ui_config.STORE_OPTIONS,
+                    value=ui_config.STORE_OPTIONS[0],
                     interactive=True,
                     elem_classes=["dropdown-readonly"],
                     scale=1
                 )
                 redeem_method_input = gr.Dropdown(
                     label="📦 兌換途徑", 
-                    choices=config.REDEEM_METHODS,
-                    value=config.REDEEM_METHODS[0],
+                    choices=ui_config.REDEEM_METHODS,
+                    value=ui_config.REDEEM_METHODS[0],
                     interactive=True,
                     elem_classes=["dropdown-readonly"],
                     scale=1
@@ -103,7 +118,7 @@ with gr.Blocks(
                     elem_classes=["date-picker-container"]
                 )
                 
-                # 特殊樣式處理 (inline style for specific override)
+                # 特殊樣式處理
                 gr.HTML(f"""
                 <style>
                 #expiry_date_picker .timebox input:first-child {{
@@ -166,6 +181,7 @@ with gr.Blocks(
         
         gr.Markdown("---")
         
+        # 兌換/刪除寄杯記錄
         with gr.Accordion("☕ 兌換 / 刪除寄杯記錄", open=True):
             gr.Markdown("💡 **提示：** 在下方選擇記錄後，點擊「兌換一杯」或「刪除記錄」按鈕")
             action_status = gr.Markdown()
@@ -185,21 +201,21 @@ with gr.Blocks(
         gr.Markdown("---")
         gr.Markdown("### 📋 所有寄杯記錄")
         
-        deposits_display = gr.HTML(value=logic.get_deposits_display(None))
-        statistics_display = gr.HTML(value=logic.get_statistics(None))
+        deposits_display = gr.HTML(value=components.get_deposits_display(None))
+        statistics_display = gr.HTML(value=components.get_statistics(None))
     
-    # === 事件處理區 ===
+    # === 事件處理器 ===
 
     # 頁面載入時自動登入
     def on_load(request: gr.Request):
-        user, login_vis, main_vis = logic.auto_login(request)
+        user, login_vis, main_vis = auth.auto_login(request)
         if user:
             user_display = f"👤 使用者：**{user}**"
-            deposits = logic.get_deposits_display(user)
-            stats = logic.get_statistics(user)
-            choices = logic.get_deposit_choices(user)
+            deposits = components.get_deposits_display(user)
+            stats = components.get_statistics(user)
+            choices = deposit_service.get_deposit_choices(user)
             return user, login_vis, main_vis, user_display, deposits, stats, choices
-        return None, login_vis, main_vis, "", logic.get_deposits_display(None), logic.get_statistics(None), gr.update(choices=[])
+        return None, login_vis, main_vis, "", components.get_deposits_display(None), components.get_statistics(None), gr.update(choices=[])
     
     app.load(
         fn=on_load,
@@ -208,21 +224,21 @@ with gr.Blocks(
     
     # 切換輸入方式
     expiry_input_method.change(
-        fn=logic.toggle_expiry_input,
+        fn=deposit_service.toggle_expiry_input,
         inputs=[expiry_input_method],
         outputs=[date_picker_column, days_input_column]
     )
     
     # 天數變更時顯示計算結果
     days_until_expiry.change(
-        fn=logic.calculate_expiry_date_display,
+        fn=date_utils.calculate_expiry_date_display,
         inputs=[days_until_expiry],
         outputs=[calculated_date_display]
     )
     
     # 註冊事件
     def register_and_update(username, password, confirm):
-        return logic.register_user(username, password, confirm)
+        return auth.register_user(username, password, confirm)
     
     register_btn.click(
         fn=register_and_update,
@@ -237,15 +253,15 @@ with gr.Blocks(
     
     # 登入事件
     def login_and_update(username, password, remember_me, request: gr.Request):
-        message, login_vis, main_vis, user = logic.login_user(username, password, remember_me, request)
+        message, login_vis, main_vis, user = auth.login_user(username, password, remember_me, request)
         if user:
             user_display = f"👤 使用者：**{user}**"
-            deposits = logic.get_deposits_display(user)
-            stats = logic.get_statistics(user)
-            choices = logic.get_deposit_choices(user)
+            deposits = components.get_deposits_display(user)
+            stats = components.get_statistics(user)
+            choices = deposit_service.get_deposit_choices(user)
             return message, login_vis, main_vis, user, user_display, deposits, stats, choices
         else:
-            return message, login_vis, main_vis, None, "", logic.get_deposits_display(None), logic.get_statistics(None), gr.update(choices=[])
+            return message, login_vis, main_vis, None, "", components.get_deposits_display(None), components.get_statistics(None), gr.update(choices=[])
     
     login_btn.click(
         fn=login_and_update,
@@ -264,14 +280,22 @@ with gr.Blocks(
     )
     
     # 登出事件
+    def logout_and_update(request: gr.Request):
+        auth.logout_user(request)
+        return gr.update(visible=True), gr.update(visible=False), None, "", components.get_deposits_display(None), components.get_statistics(None), gr.update(choices=[])
+    
     logout_btn.click(
-        fn=logic.logout_user,
+        fn=logout_and_update,
         outputs=[login_area, main_area, current_user, user_info, deposits_display, statistics_display, deposit_selector]
     )
     
     # 新增寄杯事件
     def add_and_refresh(user, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until):
-        return logic.add_deposit(user, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until)
+        message, _, _, _ = deposit_service.add_deposit(user, item, quantity, store, redeem_method, expiry_method, expiry_date, days_until)
+        deposits = components.get_deposits_display(user)
+        stats = components.get_statistics(user)
+        choices = deposit_service.get_deposit_choices(user)
+        return message, deposits, stats, choices
     
     add_btn.click(
         fn=add_and_refresh,
@@ -286,7 +310,11 @@ with gr.Blocks(
     
     # 兌換事件
     def redeem_and_refresh(user, deposit_id):
-        return logic.redeem_one(user, deposit_id)
+        message, _, _, _ = deposit_service.redeem_one(user, deposit_id)
+        deposits = components.get_deposits_display(user)
+        stats = components.get_statistics(user)
+        choices = deposit_service.get_deposit_choices(user)
+        return message, deposits, stats, choices
     
     redeem_btn.click(
         fn=redeem_and_refresh,
@@ -296,7 +324,11 @@ with gr.Blocks(
     
     # 刪除事件
     def delete_and_refresh(user, deposit_id):
-        return logic.delete_deposit(user, deposit_id)
+        message, _, _, _ = deposit_service.delete_deposit(user, deposit_id)
+        deposits = components.get_deposits_display(user)
+        stats = components.get_statistics(user)
+        choices = deposit_service.get_deposit_choices(user)
+        return message, deposits, stats, choices
     
     delete_btn.click(
         fn=delete_and_refresh,
@@ -305,8 +337,14 @@ with gr.Blocks(
     )
     
     # 重新整理事件
+    def refresh_display_handler(user):
+        deposits = components.get_deposits_display(user)
+        stats = components.get_statistics(user)
+        choices = deposit_service.get_deposit_choices(user)
+        return deposits, stats, choices
+    
     refresh_btn.click(
-        fn=logic.refresh_display,
+        fn=refresh_display_handler,
         inputs=[current_user],
         outputs=[deposits_display, statistics_display, deposit_selector]
     )
