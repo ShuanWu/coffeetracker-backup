@@ -92,10 +92,11 @@ def register_user(username, password, confirm_password):
     }
     
     if database.save_users(users):
-        user_file = database.get_user_data_file(username)
-        with open(user_file, 'w', encoding='utf-8') as f:
-            json.dump([], f)
-        database.upload_to_hf_async(user_file)
+        # user_file = database.get_user_data_file(username)
+        # with open(user_file, 'w', encoding='utf-8') as f:
+        #     json.dump([], f)
+        # database.upload_to_hf_async(user_file)
+        database.save_deposits(username,[])
         
         return "✅ 註冊成功！請登入", gr.update(visible=True), gr.update(visible=False)
     else:

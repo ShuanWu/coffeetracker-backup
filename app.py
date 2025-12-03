@@ -1,19 +1,10 @@
-import gradio as gr
-import threading
-import config
-import database
-import logic
-from datetime import datetime
-
-# 預載入資料
-def preload_data():
-    """預載入常用資料"""
-    print("🔄 預載入資料中...")
-    database.load_users()
-    database.load_sessions()
-    print("✅ 預載入完成")
-
-threading.Thread(target=preload_data, daemon=True).start()
+# import gradio as gr
+# import threading
+# import config
+# import database
+# import logic
+# from datetime import datetime
+database.load_users()
 
 # 建立 Gradio 介面
 with gr.Blocks(
