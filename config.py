@@ -1,13 +1,13 @@
 import os
 
-# Hugging Face 設定 (若需使用 HF Persistent Storage，路徑通常為 /data/coffee.db)
+# Hugging Face 設定
 HF_TOKEN = os.getenv("HF_TOKEN")
 HF_REPO = os.getenv("SPACE_ID")
 
-# 資料庫路徑設定
-# 如果在 Hugging Face Spaces 且有掛載 Persistent Storage，建議改為 '/data/coffee.db'
+# 檔案路徑設定
+USERS_FILE = 'users.json'
 DATA_DIR = 'user_data'
-DB_FILE = os.path.join(DATA_DIR, 'coffee.db')
+SESSIONS_FILE = 'sessions.json'
 
 # 商店和兌換途徑選項
 STORE_OPTIONS = ['7-11', '全家', '星巴克']
@@ -262,7 +262,7 @@ input[type="datetime-local"]:hover {
 }
 """
 
-# JS 初始化腳本
+# JS 初始化腳本 (作為字串存在 config 中)
 JS_INIT_SCRIPT = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {

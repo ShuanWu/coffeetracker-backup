@@ -5,14 +5,15 @@ import database
 import logic
 from datetime import datetime
 
-# 初始化資料庫
-def init_app():
-    print("🔄 初始化資料庫中...")
-    database.init_db()
-    print("✅ 初始化完成")
+# 預載入資料
+def preload_data():
+    """預載入常用資料"""
+    print("🔄 預載入資料中...")
+    database.load_users()
+    database.load_sessions()
+    print("✅ 預載入完成")
 
-# 在啟動時執行
-init_app()
+threading.Thread(target=preload_data, daemon=True).start()
 
 # 建立 Gradio 介面
 with gr.Blocks(
