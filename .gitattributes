@@ -1,0 +1,13 @@
+# 資料檔案
+data/
+*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 備份檔案
+*.backup
