@@ -1,7 +1,7 @@
 # import gradio as gr
 # import threading
 # import config
-# import database
+import database
 # import logic
 # from datetime import datetime
 database.load_users()
