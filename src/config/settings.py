@@ -14,3 +14,7 @@ DATA_DIR = 'data'
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 SESSIONS_FILE = os.path.join(DATA_DIR, 'sessions.json')
 USER_DATA_DIR = os.path.join(DATA_DIR, 'user_records')  # 用戶個別資料夾
+
+# 管理員設定
+# 在這裡定義管理員的帳號名稱列表
+ADMIN_USERS = ['admin', 'shihshuanwu', 'admin']
