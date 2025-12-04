@@ -1,6 +1,29 @@
 # app.py - 重構版本
 
 import gradio as gr
+
+# ========== 維護模式開關 ==========
+MAINTENANCE = True  # 改成 True 啟用維護
+# =================================
+
+if MAINTENANCE:
+    # 維修頁面
+    maintenance_page = """
+    <div style="text-align: center; padding: 80px 20px; font-family: Arial, sans-serif;">
+        <div style="font-size: 100px; margin-bottom: 30px;">⚙️</div>
+        <h1 style="font-size: 42px; color: #2c3e50;">系統維護中</h1>
+        <p style="font-size: 20px; color: #5a6c7d;">我們正在進行系統升級</p>
+        <p style="font-size: 16px; color: #95a5a6; margin-top: 30px;">預計很快完成，感謝等待 🙏</p>
+    </div>
+    """
+    
+    with gr.Blocks(title="系統維護中") as demo:
+        gr.HTML(maintenance_page)
+    
+    demo.launch()
+
+
+
 from datetime import datetime
 
 # 導入配置
