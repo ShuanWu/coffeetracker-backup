@@ -17,4 +17,7 @@ USER_DATA_DIR = os.path.join(DATA_DIR, 'user_records')  # 用戶個別資料夾
 
 # 管理員設定
 # 在這裡定義管理員的帳號名稱列表
-ADMIN_USERS = ['admin', 'shihshuanwu', 'admin']
+# 管理員設定（建議從環境變數讀取）
+import os
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")  # 請在環境變數中設定
