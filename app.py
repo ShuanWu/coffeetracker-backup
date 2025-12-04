@@ -1,19 +1,51 @@
 # app.py - 重構版本
-
 import gradio as gr
 
 # ========== 維護模式開關 ==========
-MAINTENANCE = True  # 改成 True 啟用維護
+MAINTENANCE = False  # 改成 True 啟用維護
 # =================================
 
 if MAINTENANCE:
-    # 維修頁面
+    # 維修頁面（帶旋轉動畫）
     maintenance_page = """
-    <div style="text-align: center; padding: 80px 20px; font-family: Arial, sans-serif;">
-        <div style="font-size: 100px; margin-bottom: 30px;">⚙️</div>
-        <h1 style="font-size: 42px; color: #2c3e50;">系統維護中</h1>
-        <p style="font-size: 20px; color: #5a6c7d;">我們正在進行系統升級</p>
-        <p style="font-size: 16px; color: #95a5a6; margin-top: 30px;">預計很快完成，感謝等待 🙏</p>
+    <style>
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .maintenance-container {
+            text-align: center;
+            padding: 80px 20px;
+            font-family: Arial, sans-serif;
+        }
+        .icon {
+            font-size: 100px;
+            margin-bottom: 30px;
+            display: inline-block;
+            animation: rotate 3s linear infinite;
+        }
+        .title {
+            font-size: 42px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 20px;
+            color: #5a6c7d;
+            margin-bottom: 15px;
+        }
+        .sub-message {
+            font-size: 16px;
+            color: #95a5a6;
+            margin-top: 30px;
+        }
+    </style>
+    
+    <div class="maintenance-container">
+        <div class="icon">⚙️</div>
+        <h1 class="title">系統維護中</h1>
+        <p class="message">我們正在進行系統升級</p>
+        <p class="sub-message">預計很快完成，感謝等待 🙏</p>
     </div>
     """
     
@@ -21,6 +53,12 @@ if MAINTENANCE:
         gr.HTML(maintenance_page)
     
     demo.launch()
+    
+    # 結束程式，不執行下面的主程式
+    import sys
+    sys.exit(0)
+
+# ========== 以下是你的正常主程式 ==========
 
 
 
