@@ -2,7 +2,7 @@
 import gradio as gr
 
 # ========== 維護模式開關 ==========
-MAINTENANCE = False  # 改成 True 啟用維護
+MAINTENANCE = True  # 改成 True 啟用維護
 # =================================
 
 if MAINTENANCE:
